@@ -1,0 +1,47 @@
+{
+  "name": "skydiving-dashboard-electron-wrapper",
+  "version": "0.1.0",
+  "description": "Electron wrapper for Skydiving Dashboard (starts local Python feed + fullscreen app window)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.grouchmedia.skydivingdashboard",
+    "productName": "Skydiving Dashboard",
+    "asar": true,
+    "files": [
+      "**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../dashboard.html",
+        "to": "dashboard.html"
+      },
+      {
+        "from": "../dz_feed_server.py",
+        "to": "dz_feed_server.py"
+      },
+      {
+        "from": "../config",
+        "to": "config"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
