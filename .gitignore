@@ -1,1 +1,33 @@
-.vscode
+# --- Node / Electron build artifacts ---
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn.lock
+
+# Root-level leftover electron attempt (ignore unless you decide to use it)
+electron/
+
+# Electron wrapper build outputs
+electron-wrapper/node_modules/
+electron-wrapper/dist/
+electron-wrapper/out/
+electron-wrapper/release/
+
+# Logs
+*.log
+# Node / Electron
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn.lock
+
+# Electron wrapper outputs
+electron-wrapper/node_modules/
+electron-wrapper/dist/
+electron-wrapper/out/
+electron-wrapper/release/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
