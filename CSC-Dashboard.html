@@ -1,0 +1,200 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ham Dashboard - CSCWX Style</title>
+  <link href="https://vjs.zencdn.net/7.20.2/video-js.css" rel="stylesheet">
+  <script src="https://vjs.zencdn.net/7.20.2/video.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="preload" href="https://radar.weather.gov/ridge/standard/CONUS_loop.gif" as="image">
+  <link rel="preload" href="https://www.hamqsl.com/solar101vhf.php" as="image">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    overflow: hidden;
+    font-family: sans-serif;
+    color: #fff;
+  }
+  .dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 5px;
+    height: 100vh;
+    padding: 5px;
+    box-sizing: border-box;
+  }
+  .pane {
+    background: #111;
+    border: 1px solid #333;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+  }
+  .iframe-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  iframe, img, video {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  iframe {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  iframe::-webkit-scrollbar {
+    display: none;
+  }
+  .pane2 .iframe-wrapper,
+  .pane4 .iframe-wrapper,
+  .pane5 .iframe-wrapper,
+  .pane6 .iframe-wrapper {
+    overflow: hidden;
+    width: calc(100% + 17px);
+    height: calc(100% + 17px);
+    margin-right: -17px;
+    margin-bottom: -17px;
+  }
+  .pane2 iframe,
+  .pane4 iframe,
+  .pane5 iframe,
+  .pane6 iframe {
+    transform: scale(0.98);
+    transform-origin: top left;
+    width: calc(100% / 0.98);
+    height: calc(100% / 0.98);
+  }
+  .pane1 img {
+    object-fit: fill;
+  }
+  .pane8 img {
+    object-fit: fill;
+  }
+  img:not(.pane1 img, .pane8 img) {
+    object-fit: contain;
+  }
+  .pane1 { grid-column: 1; grid-row: 1; }
+  .pane2 { grid-column: 2; grid-row: 1; }
+  .pane3 { grid-column: 3; grid-row: 1; }
+  .pane4 { grid-column: 1; grid-row: 2 / span 2; }
+  .pane5 { grid-column: 2; grid-row: 2; }
+  .pane8 { grid-column: 2; grid-row: 3; }
+  .pane6 { grid-column: 3; grid-row: 2 / span 2; }
+  .pane.loading::before {
+    content: "Loading...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 16px;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="pane pane1">
+      <img id="pane1" src="https://radar.weather.gov/ridge/standard/CONUS_loop.gif">
+    </div>
+    <div class="pane pane2">
+      <div class="iframe-wrapper">
+        <iframe id="pane2" src="https://api.wetmet.net/widgets/stream/frame.php?uid=7795ed8bc355d24aee9b77b82884944a" frameborder="0" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+    <div class="pane pane3">
+      <div class="iframe-wrapper">
+        <iframe id="pane3" src="https://embed.windy.com/embed2.html?lat=41.893&lon=-89.078&zoom=11&level=surface&overlay=wind" loading="lazy"></iframe>
+      </div>
+    </div>
+    <div class="pane pane4">
+      <div class="iframe-wrapper">
+        <iframe id="pane4" src="https://cscwx.com/manifest?embed=true" loading="lazy"></iframe>
+      </div>
+    </div>
+    <div class="pane pane5">
+      <div class="iframe-wrapper">
+        <iframe id="pane5" src="https://cscwx.com/?embed=true" loading="lazy"></iframe>
+      </div>
+    </div>
+    <div class="pane pane6">
+      <div class="iframe-wrapper">
+        <iframe id="pane6" src="https://cscwx.com/aloft?embed=true" loading="lazy"></iframe>
+      </div>
+    </div>
+    <div class="pane pane8">
+      <img id="pane8" src="https://www.hamqsl.com/solar101vhf.php">
+    </div>
+  </div>
+
+  <script>
+    function refreshPane(id, url) {
+      const el = document.getElementById(id);
+      if (el) {
+        const pane = el.closest('.pane');
+        pane.classList.add('loading');
+        const src = url + (url.includes("?") ? "&" : "?") + "ts=" + new Date().getTime();
+        el.src = src;
+        el.onload = () => pane.classList.remove('loading');
+      }
+    }
+
+    setTimeout(() => { setInterval(() => { refreshPane("pane1", "https://radar.weather.gov/ridge/standard/CONUS_loop.gif"); }, 300000); }, 1000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane2", "https://api.wetmet.net/widgets/stream/frame.php?uid=7795ed8bc355d24aee9b77b82884944a"); }, 60000); }, 2000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane3", "https://embed.windy.com/embed2.html?lat=41.893&lon=-89.078&zoom=11&level=surface&overlay=wind"); }, 300000); }, 3000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane4", "https://cscwx.com/manifest?embed=true"); }, 180000); }, 4000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane5", "https://cscwx.com/?embed=true"); }, 300000); }, 5000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane6", "https://cscwx.com/aloft?embed=true"); }, 300000); }, 6000);
+    setTimeout(() => { setInterval(() => { refreshPane("pane8", "https://www.hamqsl.com/solar101vhf.php"); }, 3600000); }, 7000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "a_license": {
+    "name": "A-License (conservative)",
+    "limits": {
+      "max_surface_wind_kt": 19,
+      "max_gust_spread_kt": 9,
+      "max_aloft_14k_kt": 35,
+      "max_shear_14k_kt": 20,
+      "max_dir_change_deg": 120
+    }
+  }
+}
