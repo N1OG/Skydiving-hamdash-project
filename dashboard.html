@@ -1455,15 +1455,14 @@ th, td{
   // missing or empty, fall back to constructing a URL from the burble_dz_id.
   function updateManifestURL() {
     const dz = getDzMeta(CURRENT_DZ_CODE);
-    // Determine which URL to proxy through the feed server. We prefer the explicit
-    // burble_public_url, if present. Otherwise fall back to the Burble DZ ID.
+    // Determine which URL to display.  For a full-screen popup we use the
+    // Burble URL directly rather than the proxy, so that relative links within
+    // the page (scripts, styles) resolve correctly.  Only fallback to our
+    // constructed dz_id URL if no explicit URL is provided.
     if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
-      const rawUrl = String(dz.burble_public_url).trim();
-      // Use the proxy endpoint so the manifest can be embedded despite X-Frame-Options.
-      manifestURL = `${API}/proxy_manifest?url=${encodeURIComponent(rawUrl)}`;
+      manifestURL = String(dz.burble_public_url).trim();
     } else if (dz && dz.burble_dz_id) {
-      // Use the DZ ID with the proxy endpoint. The server will construct the full URL.
-      manifestURL = `${API}/proxy_manifest?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
+      manifestURL = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
     } else {
       manifestURL = null;
     }
