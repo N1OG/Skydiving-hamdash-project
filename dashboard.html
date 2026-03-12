@@ -1484,11 +1484,20 @@ th, td{
       window.clearTimeout(manifestTimer);
       manifestTimer = null;
     }
-    // Always start from the dashboard view
-    showDashboard = true;
+    // Refresh the manifest URL for the current DZ
     updateManifestURL();
-    // Kick off the rotation cycle
-    toggleManifest();
+    // Start with the dashboard visible
+    showDashboard = true;
+    const frame = document.getElementById("manifestFrame");
+    // If there's no manifest URL for the active DZ, hide the iframe and don't rotate
+    if (!manifestURL) {
+      if (frame) frame.style.display = "none";
+      return;
+    }
+    // Ensure the dashboard is visible initially
+    if (frame) frame.style.display = "none";
+    // Schedule the first switch to the manifest after showing the dashboard
+    manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
   }
 </script>
 <iframe id="manifestFrame" style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"></iframe>
