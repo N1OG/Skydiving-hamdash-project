@@ -77,6 +77,7 @@ DEFAULT_LIMITS = {
     "max_surface_wind_kt": 19,
     "max_gust_spread_kt": 9,
     "max_aloft_14k_kt": 60,
+    "max_shear_14k_kt": 20,
     # directional sensitivity can be added later; keep place-holder for UI compatibility
     "max_dir_change_deg": 120,
     "max_gust_kt": 0,
@@ -89,33 +90,40 @@ BUILTIN_JUMP_PROFILES = {
         "name": "Student",
         "limits": {
             "max_surface_wind_kt": 14,
-            "max_gust_kt": 14,
+            "max_gust_kt": 18,
             "min_temp_f": 32,
             "max_temp_f": 95,
             "max_gust_spread_kt": 6,
             "max_aloft_14k_kt": 45,
+            "max_shear_14k_kt": 12,
+            "max_dir_change_deg": 90,
         },
     },
     "a_license": {
         "name": "A-License (conservative)",
         "limits": {
             "max_surface_wind_kt": 19,
-            "max_gust_kt": 20,
+            "max_gust_kt": 25,
             "min_temp_f": 30,
             "max_temp_f": 95,
             "max_gust_spread_kt": 9,
             "max_aloft_14k_kt": 60,
+            "max_shear_14k_kt": 20,
+            "max_dir_change_deg": 120,
         },
     },
     "experienced": {
-        "name": "More Experienced",
+        "name": "Experienced (1k+)",
         "limits": {
             "max_surface_wind_kt": 25,
             "max_gust_spread_kt": 12,
             "max_aloft_14k_kt": 80,
+            "max_shear_14k_kt": 25,
+            "max_dir_change_deg": 140,
         },
     },
 }
+
 
 def c_to_f(c: Optional[float]) -> Optional[int]:
     """Celsius → Fahrenheit (rounded int)."""
@@ -1072,33 +1080,73 @@ class Handler(BaseHTTPRequestHandler):
             if not remote_url:
                 self._send_json(400, {"ok": False, "error": "missing url/dz_code/dz_id for proxy_manifest"})
                 return
-            # Fetch the remote content with a browser-like user agent.  Some
-            # Burble pages return HTTP 500 for non-browser agents (e.g. the
-            # default Python urllib or our previous custom UA).  Use a
-            # common Mozilla UA and accept HTML/XML so the remote server
-            # responds consistently.
-            status, body = _http_get_text(
-                remote_url,
-                timeout=12.0,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                },
-            )
-            if status != 200:
-                self._send_json(status or 502, {"ok": False, "error": f"proxy fetch failed (HTTP {status})"})
-                return
-            # Return the raw HTML. We disable caching to avoid stale data.
+            # Fetch the remote content and follow redirects/cookies.  We use a cookie
+            # jar to allow Burble's session handshake to complete (many pages set a
+            # cookie on the first request and redirect to a clean URL).  Using a
+            # full-featured opener with a Firefox-like User-Agent mimics a real
+            # browser so the remote server returns a complete HTML page.  After
+            # retrieving the final page, we inject a <base> tag to ensure all
+            # relative links (scripts, CSS, forms) resolve against the original
+            # origin, not our proxy.  Without this, relative references will 404
+            # because the browser would try to fetch them from our localhost server.
             try:
+                import http.cookiejar
+                from urllib.parse import urlsplit
+                cj = http.cookiejar.CookieJar()
+                opener = urllib.request.build_opener(
+                    urllib.request.HTTPCookieProcessor(cj),
+                    urllib.request.HTTPRedirectHandler()
+                )
+                opener.addheaders = [
+                    ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"),
+                    ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+                ]
+                resp = opener.open(remote_url, timeout=15.0)
+                status = getattr(resp, "status", 200)
+                content = resp.read().decode("utf-8", errors="replace")
+                # Determine the final URL after redirects (e.g. Burble may redirect
+                # /jumper_manifest_public?dz_id=XXX -> /index.php/jumper_manifest_public?dz_id=XXX)
+                final_url = resp.geturl() if hasattr(resp, "geturl") else remote_url
+                parts = urlsplit(final_url)
+                base_href = f"{parts.scheme}://{parts.netloc}/"
+                # Inject a <base> tag into the <head>.  If there's no <head>, create one.
+                inject_tag = f"<base href=\"{base_href}\">"
+                modified = content
+                try:
+                    # Only inject if <base> isn't already present
+                    if "<base" not in content.lower():
+                        if "<head" in content.lower():
+                            # Insert after the opening <head> tag
+                            import re
+                            modified = re.sub(
+                                r"(?i)<head([^>]*)>",
+                                lambda m: m.group(0) + inject_tag,
+                                content,
+                                count=1,
+                            )
+                        else:
+                            # No <head>; prepend the base at the top of the document
+                            modified = inject_tag + content
+                except Exception:
+                    # In case of regex failure, fall back to simple prepend
+                    modified = inject_tag + content
+                # Relay the modified HTML to the client
                 self.send_response(200)
                 self._send_cors()
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Cache-Control", "no-store, max-age=0")
                 self.end_headers()
-                self.wfile.write(body.encode("utf-8"))
-            except Exception:
-                self._send_json(500, {"ok": False, "error": "failed to relay manifest"})
-            return
+                self.wfile.write(modified.encode("utf-8"))
+                return
+            except Exception as e:
+                # If any error occurs (including HTTP errors), return JSON error
+                err_msg = getattr(e, "reason", None) or str(e)
+                try:
+                    status = getattr(e, "code", 502)
+                except Exception:
+                    status = 502
+                self._send_json(status, {"ok": False, "error": f"proxy fetch failed ({err_msg})"})
+                return
 
         self._send_json(404, {"ok": False, "error": f"unknown path {path}"})
 

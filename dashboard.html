@@ -1446,7 +1446,10 @@ th, td{
   let manifestURL = null;
   let manifestTimer = null;
   let showDashboard = true;
-  let manifestWindow = null; // reference to the popup window when using window.open
+  // We no longer open a separate popup window for the manifest. Instead, we
+  // display it in an overlay iframe (manifestFrame) so we can supply a
+  // proxied URL that follows redirects and has a proper <base> tag.  The
+  // overlay covers the dashboard when the manifest is shown.
   const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
   const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
 
@@ -1455,80 +1458,72 @@ th, td{
   // missing or empty, fall back to constructing a URL from the burble_dz_id.
   function updateManifestURL() {
     const dz = getDzMeta(CURRENT_DZ_CODE);
-    // Determine which URL to display.  For a full-screen popup we use the
-    // Burble URL directly rather than the proxy, so that relative links within
-    // the page (scripts, styles) resolve correctly.  Only fallback to our
-    // constructed dz_id URL if no explicit URL is provided.
+    // Determine which URL to display.  We always call the proxy_manifest
+    // endpoint on our feed server so that the remote Burble page is fetched
+    // server-side with redirect/cookie handling and a <base> tag injected.  If
+    // an explicit burble_public_url is provided, use it; otherwise construct
+    // from burble_dz_id.  If neither is available, manifestURL will be null.
+    let rawUrl = null;
     if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
-      manifestURL = String(dz.burble_public_url).trim();
+      rawUrl = String(dz.burble_public_url).trim();
     } else if (dz && dz.burble_dz_id) {
-      manifestURL = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
+      rawUrl = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
+    }
+    if (rawUrl) {
+      manifestURL = `${API}/proxy_manifest?url=${encodeURIComponent(rawUrl)}`;
     } else {
       manifestURL = null;
     }
-
-    // Log the proxied manifest URL for debugging. This will appear in the browser
-    // console (open devtools to see it). Helps to verify which URL is used.
+    // Log the final URL for debugging (appears in the console)
     try {
       console.log("updateManifestURL:", {
         currentDZ: CURRENT_DZ_CODE,
+        rawUrl: rawUrl,
         manifestURL: manifestURL
       });
     } catch (e) {}
   }
 
-  // Toggle between the dashboard and manifest page. Uses a full-screen iframe.
+  // Toggle between showing the dashboard and the manifest page.  We use a
+  // full-screen overlay iframe (#manifestFrame) to display the proxied
+  // manifest.  When showDashboard is true, the iframe is hidden and the
+  // dashboard is visible.  When false, the iframe is shown and its src is
+  // set to manifestURL.  Rotation is controlled by timeouts.
   function toggleManifest() {
     const frame = document.getElementById("manifestFrame");
     if (!manifestURL) {
-      // No external manifest for this DZ: ensure the iframe is hidden, close any open popup, and stop rotation.
-      if (frame) frame.style.display = "none";
-      if (manifestWindow && !manifestWindow.closed) {
-        try { manifestWindow.close(); } catch (e) {}
-        manifestWindow = null;
+      // No manifest available: ensure the iframe is hidden and stop rotation.
+      if (frame) {
+        frame.style.display = "none";
+        frame.src = "";
       }
       showDashboard = true;
       return;
     }
     if (showDashboard) {
-      // When switching from the dashboard to the manifest, open the Burble page in
-      // a new browser window rather than embedding it in an iframe.  This avoids
-      // X-Frame-Options/Content-Security-Policy restrictions and uses the
-      // browser engine directly.  We attempt to make the window fullscreen; if
-      // not possible it will simply open a new tab.
+      // Switch from dashboard to manifest: show the iframe and load the URL
       try {
-        console.log("toggleManifest: opening manifest in new window", {
+        console.log("toggleManifest: showing manifest", {
           currentDZ: CURRENT_DZ_CODE,
           url: manifestURL
         });
       } catch (e) {}
-      // Close any previously opened manifest window before opening a new one.
-      if (manifestWindow && !manifestWindow.closed) {
-        try { manifestWindow.close(); } catch (e) {}
+      if (frame) {
+        frame.src = manifestURL;
+        frame.style.display = "block";
       }
-      manifestWindow = window.open(
-        manifestURL,
-        "burble_manifest",
-        "toolbar=no,location=no,menubar=no,scrollbars=yes,resizable=yes,fullscreen=yes"
-      );
-      // Hide the overlay iframe while the external window is shown.
-      if (frame) frame.style.display = "none";
       showDashboard = false;
       manifestTimer = window.setTimeout(toggleManifest, MANIFEST_DURATION_MS);
     } else {
-      // Switch back to the dashboard: close the external manifest window and
-      // optionally show the overlay iframe again (kept hidden here).  Then
-      // schedule the next display of the manifest after the dashboard interval.
+      // Switch back to dashboard: hide the iframe and clear its src
       try {
-        console.log("toggleManifest: closing manifest window, returning to dashboard");
+        console.log("toggleManifest: hiding manifest, returning to dashboard");
       } catch (e) {}
-      if (manifestWindow && !manifestWindow.closed) {
-        try { manifestWindow.close(); } catch (e) {}
+      if (frame) {
+        frame.style.display = "none";
+        frame.src = "";
       }
-      manifestWindow = null;
       showDashboard = true;
-      // Keep the iframe hidden during the dashboard interval.
-      if (frame) frame.style.display = "none";
       manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
     }
   }
@@ -1543,20 +1538,16 @@ th, td{
     updateManifestURL();
     // Start with the dashboard visible
     showDashboard = true;
-    // Close any previous pop-up manifest window since we're restarting rotation.
-    if (manifestWindow && !manifestWindow.closed) {
-      try { manifestWindow.close(); } catch (e) {}
-    }
-    manifestWindow = null;
     const frame = document.getElementById("manifestFrame");
-    // If there's no manifest URL for the active DZ, hide the iframe and don't rotate
+    // Close and hide any previously loaded manifest in the iframe
+    if (frame) {
+      frame.style.display = "none";
+      frame.src = "";
+    }
+    // If there's no manifest URL for the active DZ, leave the dashboard visible and stop rotation
     if (!manifestURL) {
-      if (frame) frame.style.display = "none";
       return;
     }
-    // Ensure the dashboard is visible initially
-    if (frame) frame.style.display = "none";
-
     // Attach logging handlers to the iframe exactly once. These handlers
     // report success or failure of loading the manifest. They help diagnose
     // 404s or other problems. The _logListenersAttached flag prevents
