@@ -59,9 +59,64 @@ function getRuntimeDir() {
   return path.join(app.getPath("userData"), "runtime");
 }
 
+/*
+ * Ensure that the dashboard HTML, feed server script and configuration
+ * files in the user's runtime directory are up to date with the version
+ * bundled in this release.
+ *
+ * We store the current packaged version in a file (version.txt) inside
+ * the runtime directory.  When launching the app we compare this
+ * recorded version against app.getVersion().  If the versions differ,
+ * all runtime files managed by the installer are deleted so that fresh
+ * copies from the new package are written.  Any user-modified files
+ * remain in other files inside runtimeDir.
+ */
 function ensureRuntimeFiles() {
   const runtimeDir = getRuntimeDir();
   ensureDir(runtimeDir);
+
+  // Path to a small file that records which version populated the runtime
+  const versionFile = path.join(runtimeDir, "version.txt");
+  const currentVersion = app.getVersion();
+  let existingVersion = null;
+  if (exists(versionFile)) {
+    try {
+      existingVersion = fs.readFileSync(versionFile, "utf8").trim();
+    } catch {
+      existingVersion = null;
+    }
+  }
+
+  // Helper to remove stale runtime contents while leaving unrelated user data intact.
+  function clearManagedFiles() {
+    const filesToRemove = [
+      path.join(runtimeDir, "dashboard.html"),
+      path.join(runtimeDir, "dz_feed_server.py"),
+    ];
+    const dirsToRemove = [path.join(runtimeDir, "config")];
+
+    for (const f of filesToRemove) {
+      try {
+        if (exists(f)) fs.unlinkSync(f);
+      } catch {
+        // ignore errors
+      }
+    }
+    for (const d of dirsToRemove) {
+      try {
+        if (exists(d)) fs.rmSync(d, { recursive: true, force: true });
+      } catch {
+        // ignore errors
+      }
+    }
+  }
+
+  // If this is the first run, or if the version has changed since the
+  // runtime directory was populated, clear the managed files so that
+  // updated versions from this release are installed.
+  if (existingVersion !== currentVersion) {
+    clearManagedFiles();
+  }
 
   // Source (bundled/read-only) paths
   const srcDashboard = getBundledPath("dashboard.html");
@@ -73,10 +128,18 @@ function ensureRuntimeFiles() {
   const dstServer = path.join(runtimeDir, "dz_feed_server.py");
   const dstConfigDir = path.join(runtimeDir, "config");
 
-  // Copy only if missing so we don't blow away user changes
+  // Copy only if missing so we don't blow away user changes; clearing
+  // stale files above means new versions will be copied.
   copyFileIfMissing(srcDashboard, dstDashboard);
   copyFileIfMissing(srcServer, dstServer);
   copyDirIfMissing(srcConfigDir, dstConfigDir);
+
+  // Record the version that populated these files so we can detect upgrades on next run.
+  try {
+    fs.writeFileSync(versionFile, currentVersion);
+  } catch {
+    // not fatal
+  }
 
   return {
     runtimeDir,
