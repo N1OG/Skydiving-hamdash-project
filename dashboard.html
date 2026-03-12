@@ -1446,6 +1446,7 @@ th, td{
   let manifestURL = null;
   let manifestTimer = null;
   let showDashboard = true;
+  let manifestWindow = null; // reference to the popup window when using window.open
   const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
   const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
 
@@ -1454,37 +1455,81 @@ th, td{
   // missing or empty, fall back to constructing a URL from the burble_dz_id.
   function updateManifestURL() {
     const dz = getDzMeta(CURRENT_DZ_CODE);
+    // Determine which URL to proxy through the feed server. We prefer the explicit
+    // burble_public_url, if present. Otherwise fall back to the Burble DZ ID.
     if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
-      manifestURL = String(dz.burble_public_url).trim();
+      const rawUrl = String(dz.burble_public_url).trim();
+      // Use the proxy endpoint so the manifest can be embedded despite X-Frame-Options.
+      manifestURL = `${API}/proxy_manifest?url=${encodeURIComponent(rawUrl)}`;
     } else if (dz && dz.burble_dz_id) {
-      // Construct the default manifest URL using the Burble DZ ID. This avoids
-      // stale or missing URLs in the config files and keeps the base path
-      // consistent across all drop zones.
-      manifestURL = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${dz.burble_dz_id}`;
+      // Use the DZ ID with the proxy endpoint. The server will construct the full URL.
+      manifestURL = `${API}/proxy_manifest?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
     } else {
       manifestURL = null;
     }
+
+    // Log the proxied manifest URL for debugging. This will appear in the browser
+    // console (open devtools to see it). Helps to verify which URL is used.
+    try {
+      console.log("updateManifestURL:", {
+        currentDZ: CURRENT_DZ_CODE,
+        manifestURL: manifestURL
+      });
+    } catch (e) {}
   }
 
   // Toggle between the dashboard and manifest page. Uses a full-screen iframe.
   function toggleManifest() {
     const frame = document.getElementById("manifestFrame");
     if (!manifestURL) {
-      // No external manifest for this DZ: ensure frame is hidden and stop rotation.
-      frame.style.display = "none";
+      // No external manifest for this DZ: ensure the iframe is hidden, close any open popup, and stop rotation.
+      if (frame) frame.style.display = "none";
+      if (manifestWindow && !manifestWindow.closed) {
+        try { manifestWindow.close(); } catch (e) {}
+        manifestWindow = null;
+      }
       showDashboard = true;
       return;
     }
     if (showDashboard) {
-      // Switch to showing the Burble manifest
-      frame.src = manifestURL;
-      frame.style.display = "block";
+      // When switching from the dashboard to the manifest, open the Burble page in
+      // a new browser window rather than embedding it in an iframe.  This avoids
+      // X-Frame-Options/Content-Security-Policy restrictions and uses the
+      // browser engine directly.  We attempt to make the window fullscreen; if
+      // not possible it will simply open a new tab.
+      try {
+        console.log("toggleManifest: opening manifest in new window", {
+          currentDZ: CURRENT_DZ_CODE,
+          url: manifestURL
+        });
+      } catch (e) {}
+      // Close any previously opened manifest window before opening a new one.
+      if (manifestWindow && !manifestWindow.closed) {
+        try { manifestWindow.close(); } catch (e) {}
+      }
+      manifestWindow = window.open(
+        manifestURL,
+        "burble_manifest",
+        "toolbar=no,location=no,menubar=no,scrollbars=yes,resizable=yes,fullscreen=yes"
+      );
+      // Hide the overlay iframe while the external window is shown.
+      if (frame) frame.style.display = "none";
       showDashboard = false;
       manifestTimer = window.setTimeout(toggleManifest, MANIFEST_DURATION_MS);
     } else {
-      // Switch back to the dashboard (hide the manifest)
-      frame.style.display = "none";
+      // Switch back to the dashboard: close the external manifest window and
+      // optionally show the overlay iframe again (kept hidden here).  Then
+      // schedule the next display of the manifest after the dashboard interval.
+      try {
+        console.log("toggleManifest: closing manifest window, returning to dashboard");
+      } catch (e) {}
+      if (manifestWindow && !manifestWindow.closed) {
+        try { manifestWindow.close(); } catch (e) {}
+      }
+      manifestWindow = null;
       showDashboard = true;
+      // Keep the iframe hidden during the dashboard interval.
+      if (frame) frame.style.display = "none";
       manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
     }
   }
@@ -1499,6 +1544,11 @@ th, td{
     updateManifestURL();
     // Start with the dashboard visible
     showDashboard = true;
+    // Close any previous pop-up manifest window since we're restarting rotation.
+    if (manifestWindow && !manifestWindow.closed) {
+      try { manifestWindow.close(); } catch (e) {}
+    }
+    manifestWindow = null;
     const frame = document.getElementById("manifestFrame");
     // If there's no manifest URL for the active DZ, hide the iframe and don't rotate
     if (!manifestURL) {
@@ -1507,6 +1557,31 @@ th, td{
     }
     // Ensure the dashboard is visible initially
     if (frame) frame.style.display = "none";
+
+    // Attach logging handlers to the iframe exactly once. These handlers
+    // report success or failure of loading the manifest. They help diagnose
+    // 404s or other problems. The _logListenersAttached flag prevents
+    // adding duplicate listeners on subsequent calls.
+    if (frame && !frame._logListenersAttached) {
+      frame.addEventListener("load", function() {
+        try {
+          console.log("manifest iframe loaded", {
+            currentDZ: CURRENT_DZ_CODE,
+            url: manifestURL
+          });
+        } catch (e) {}
+      });
+      frame.addEventListener("error", function(event) {
+        try {
+          console.error("manifest iframe error", {
+            currentDZ: CURRENT_DZ_CODE,
+            url: manifestURL,
+            event: event
+          });
+        } catch (e) {}
+      });
+      frame._logListenersAttached = true;
+    }
     // Schedule the first switch to the manifest after showing the dashboard
     manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
   }

@@ -77,7 +77,6 @@ DEFAULT_LIMITS = {
     "max_surface_wind_kt": 19,
     "max_gust_spread_kt": 9,
     "max_aloft_14k_kt": 60,
-    "max_shear_14k_kt": 20,
     # directional sensitivity can be added later; keep place-holder for UI compatibility
     "max_dir_change_deg": 120,
     "max_gust_kt": 0,
@@ -90,40 +89,33 @@ BUILTIN_JUMP_PROFILES = {
         "name": "Student",
         "limits": {
             "max_surface_wind_kt": 14,
-            "max_gust_kt": 18,
+            "max_gust_kt": 14,
             "min_temp_f": 32,
             "max_temp_f": 95,
             "max_gust_spread_kt": 6,
             "max_aloft_14k_kt": 45,
-            "max_shear_14k_kt": 12,
-            "max_dir_change_deg": 90,
         },
     },
     "a_license": {
         "name": "A-License (conservative)",
         "limits": {
             "max_surface_wind_kt": 19,
-            "max_gust_kt": 25,
+            "max_gust_kt": 20,
             "min_temp_f": 30,
             "max_temp_f": 95,
             "max_gust_spread_kt": 9,
             "max_aloft_14k_kt": 60,
-            "max_shear_14k_kt": 20,
-            "max_dir_change_deg": 120,
         },
     },
     "experienced": {
-        "name": "Experienced (1k+)",
+        "name": "More Experienced",
         "limits": {
             "max_surface_wind_kt": 25,
             "max_gust_spread_kt": 12,
             "max_aloft_14k_kt": 80,
-            "max_shear_14k_kt": 25,
-            "max_dir_change_deg": 140,
         },
     },
 }
-
 
 def c_to_f(c: Optional[float]) -> Optional[int]:
     """Celsius → Fahrenheit (rounded int)."""
@@ -1051,6 +1043,61 @@ class Handler(BaseHTTPRequestHandler):
                     "iframe_src": build_windy_iframe_src(float(lat), float(lon)) if (lat is not None and lon is not None) else ""
                 },
             })
+            return
+
+        # Proxy remote manifest pages to work around X-Frame-Options restrictions.
+        # Usage: /proxy_manifest?url=<fully encoded remote URL>
+        # Example: /proxy_manifest?url=https%3A%2F%2Fdzm.burblesoft.com%2Fjumper_manifest_public%3Fdz_id%3D14331
+        if path == "/proxy_manifest":
+            # We reuse the parsed query parameters from above.
+            remote_url = None
+            if "url" in q and q["url"]:
+                remote_url = q["url"][0]
+            # As a fallback, allow dz_code or dz_id param to construct the URL.
+            if not remote_url:
+                dz_code = q.get("dz_code", [None])[0]
+                dz_id = q.get("dz_id", [None])[0]
+                if dz_code:
+                    # Look up the code in profiles to find the burble_public_url or id.
+                    code = (dz_code or "").strip()
+                    prof = STORE.profiles.get(code) if code else None
+                    if isinstance(prof, dict):
+                        remote_url = prof.get("burble_public_url")
+                        # Construct from burble_dz_id if no URL available.
+                        if not remote_url and prof.get("burble_dz_id"):
+                            remote_url = f"https://dzm.burblesoft.com/jumper_manifest_public?dz_id={prof.get('burble_dz_id')}"
+                elif dz_id:
+                    # Construct from provided dz_id
+                    remote_url = f"https://dzm.burblesoft.com/jumper_manifest_public?dz_id={dz_id}"
+            if not remote_url:
+                self._send_json(400, {"ok": False, "error": "missing url/dz_code/dz_id for proxy_manifest"})
+                return
+            # Fetch the remote content with a browser-like user agent.  Some
+            # Burble pages return HTTP 500 for non-browser agents (e.g. the
+            # default Python urllib or our previous custom UA).  Use a
+            # common Mozilla UA and accept HTML/XML so the remote server
+            # responds consistently.
+            status, body = _http_get_text(
+                remote_url,
+                timeout=12.0,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/117.0",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+            )
+            if status != 200:
+                self._send_json(status or 502, {"ok": False, "error": f"proxy fetch failed (HTTP {status})"})
+                return
+            # Return the raw HTML. We disable caching to avoid stale data.
+            try:
+                self.send_response(200)
+                self._send_cors()
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store, max-age=0")
+                self.end_headers()
+                self.wfile.write(body.encode("utf-8"))
+            except Exception:
+                self._send_json(500, {"ok": False, "error": "failed to relay manifest"})
             return
 
         self._send_json(404, {"ok": False, "error": f"unknown path {path}"})

@@ -62,14 +62,18 @@ function getRuntimeDir() {
 /*
  * Ensure that the dashboard HTML, feed server script and configuration
  * files in the user's runtime directory are up to date with the version
- * bundled in this release.
+ * bundled in this release.  The application stores its writable state
+ * under getRuntimeDir() so that DZ selections and user profiles persist
+ * between runs.  Previous versions of the app never overwrote these
+ * files on upgrade, which prevented newer releases from taking effect.
  *
- * We store the current packaged version in a file (version.txt) inside
- * the runtime directory.  When launching the app we compare this
- * recorded version against app.getVersion().  If the versions differ,
- * all runtime files managed by the installer are deleted so that fresh
- * copies from the new package are written.  Any user-modified files
- * remain in other files inside runtimeDir.
+ * To fix this, we store the current packaged version in a file
+ * (version.txt) inside the runtime directory.  When launching the app
+ * we compare this recorded version against app.getVersion().  If the
+ * versions differ, all runtime files managed by the installer are
+ * deleted so that fresh copies from the new package are written.  Any
+ * user-modified files (such as custom profiles) remain in other files
+ * inside runtimeDir.
  */
 function ensureRuntimeFiles() {
   const runtimeDir = getRuntimeDir();
@@ -87,7 +91,8 @@ function ensureRuntimeFiles() {
     }
   }
 
-  // Helper to remove stale runtime contents while leaving unrelated user data intact.
+  // Helper to remove stale runtime contents while leaving unrelated
+  // user data intact.  Only remove the files that the installer manages.
   function clearManagedFiles() {
     const filesToRemove = [
       path.join(runtimeDir, "dashboard.html"),
@@ -134,7 +139,8 @@ function ensureRuntimeFiles() {
   copyFileIfMissing(srcServer, dstServer);
   copyDirIfMissing(srcConfigDir, dstConfigDir);
 
-  // Record the version that populated these files so we can detect upgrades on next run.
+  // Record the version that populated these files so we can detect
+  // upgrades on next run.
   try {
     fs.writeFileSync(versionFile, currentVersion);
   } catch {
@@ -144,7 +150,7 @@ function ensureRuntimeFiles() {
   return {
     runtimeDir,
     dashboardPath: dstDashboard,
-    serverScriptPath: dstServer
+    serverScriptPath: dstServer,
   };
 }
 
@@ -206,6 +212,15 @@ function createWindow(dashboardPath) {
   });
 
   mainWindow.loadFile(dashboardPath);
+
+  // Open the DevTools for debugging. This will show the browser console and
+  // network panel which can help diagnose issues such as manifest loading
+  // failures. Comment out this line to disable the DevTools in production.
+  try {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  } catch (e) {
+    // If devtools cannot be opened (e.g. in kiosk mode), ignore the error.
+  }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
