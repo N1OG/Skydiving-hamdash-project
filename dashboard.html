@@ -1356,6 +1356,8 @@ th, td{
     await apiPost("/set_dz", {code: newCode});
     await loadStatus();
     await refreshSnapshot();
+    // Restart manifest rotation when DZ changes
+    startManifestRotation();
   });
 
   $("profileSelect").addEventListener("change", async (e) => {
@@ -1398,6 +1400,7 @@ th, td{
     } else {
       await loadProfiles();
       await refreshSnapshot();
+      // (No need to restart manifest rotation here; active DZ has not changed)
     }
 
   });
@@ -1422,6 +1425,9 @@ th, td{
 
       await refreshSnapshot();
 
+      // Start manifest rotation after initial load
+      startManifestRotation();
+
       // Auto-refresh every 5 minutes (and the user can still smash Refresh anytime).
       setInterval(() => {
         refreshSnapshot().catch(()=>{});
@@ -1433,6 +1439,58 @@ th, td{
       $("reasonBadge").innerHTML = "<strong>Reasons:</strong> server unreachable";
     }
   })();
+
+  // --- Manifest rotation ---
+  // Rotates between showing the dashboard and the Burble manifest for the active DZ.
+  // If the active DZ does not have a Burble URL, the rotation stops and the dashboard remains visible.
+  let manifestURL = null;
+  let manifestTimer = null;
+  let showDashboard = true;
+  const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
+  const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
+
+  // Refresh the manifestURL based on the current DZ. Called whenever the active DZ changes.
+  function updateManifestURL() {
+    const dz = getDzMeta(CURRENT_DZ_CODE);
+    manifestURL = (dz && dz.burble_public_url) ? dz.burble_public_url.trim() : null;
+  }
+
+  // Toggle between the dashboard and manifest page. Uses a full-screen iframe.
+  function toggleManifest() {
+    const frame = document.getElementById("manifestFrame");
+    if (!manifestURL) {
+      // No external manifest for this DZ: ensure frame is hidden and stop rotation.
+      frame.style.display = "none";
+      showDashboard = true;
+      return;
+    }
+    if (showDashboard) {
+      // Switch to showing the Burble manifest
+      frame.src = manifestURL;
+      frame.style.display = "block";
+      showDashboard = false;
+      manifestTimer = window.setTimeout(toggleManifest, MANIFEST_DURATION_MS);
+    } else {
+      // Switch back to the dashboard (hide the manifest)
+      frame.style.display = "none";
+      showDashboard = true;
+      manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
+    }
+  }
+
+  // Start or restart the manifest rotation loop.
+  function startManifestRotation() {
+    if (manifestTimer) {
+      window.clearTimeout(manifestTimer);
+      manifestTimer = null;
+    }
+    // Always start from the dashboard view
+    showDashboard = true;
+    updateManifestURL();
+    // Kick off the rotation cycle
+    toggleManifest();
+  }
 </script>
+<iframe id="manifestFrame" style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"></iframe>
 </body>
 </html>
