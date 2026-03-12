@@ -995,6 +995,22 @@
   "name": "Skydive Orange",
   "key": "skydive-orange"
 },
+"skydive-palatka": {
+  "burble_dz_id": null,
+  "burble_public_url": null,
+  "label": "Skydive Palatka",
+  "country": "US",
+  "state": "FL",
+  "city": "Palatka",
+  "icao": "28J",
+  "lat": 29.6580,
+  "lon": -81.6901,
+  "radar": "KJAX",
+  "radar_station": "KJAX",
+  "notes": "Non-Burble DZ. Weather source is Palatka Municipal / Lt. Kay Larkin Field (28J).",
+  "name": "Skydive Palatka",
+  "key": "skydive-palatka"
+},
 "skydive-paraclete-xp": {
   "burble_dz_id": 125,
   "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=125",
