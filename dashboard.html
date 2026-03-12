@@ -1450,9 +1450,20 @@ th, td{
   const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
 
   // Refresh the manifestURL based on the current DZ. Called whenever the active DZ changes.
+  // We prefer the explicit burble_public_url from the DZ metadata. If that is
+  // missing or empty, fall back to constructing a URL from the burble_dz_id.
   function updateManifestURL() {
     const dz = getDzMeta(CURRENT_DZ_CODE);
-    manifestURL = (dz && dz.burble_public_url) ? dz.burble_public_url.trim() : null;
+    if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
+      manifestURL = String(dz.burble_public_url).trim();
+    } else if (dz && dz.burble_dz_id) {
+      // Construct the default manifest URL using the Burble DZ ID. This avoids
+      // stale or missing URLs in the config files and keeps the base path
+      // consistent across all drop zones.
+      manifestURL = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${dz.burble_dz_id}`;
+    } else {
+      manifestURL = null;
+    }
   }
 
   // Toggle between the dashboard and manifest page. Uses a full-screen iframe.
