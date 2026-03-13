@@ -42,6 +42,8 @@ function copyDirIfMissing(srcDir, dstDir) {
 }
 
 function getBundledPath(rel) {
+  // In packaged builds, extraResources are placed under process.resourcesPath
+  // In dev, our repo root is one directory up from electron-wrapper
   if (app.isPackaged) {
     return path.join(process.resourcesPath, rel);
   }
@@ -49,8 +51,7 @@ function getBundledPath(rel) {
 }
 
 function getRuntimeDir() {
-  // Writable per-user location
-  // Example: C:\Users\<you>\AppData\Roaming\Skydiving Dashboard\runtime
+  // Writable per-user location (e.g. C:\Users\<you>\AppData\Roaming\Skydiving Dashboard\runtime)
   return path.join(app.getPath("userData"), "runtime");
 }
 
@@ -128,7 +129,7 @@ function ensureRuntimeFiles() {
 }
 
 function pickPythonCommandCandidates() {
-  // Try common names. Windows typically has "python" or "py".
+  // Try common names.  Windows typically has "python" or "py".
   return isWindows() ? ["python", "py", "python3"] : ["python3", "python"];
 }
 
@@ -174,7 +175,7 @@ function createWindow(dashboardPath) {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      // Enable <webview> tags to embed Burble manifests directly
+      // Enable <webview> tags so the manifest can be embedded directly
       webviewTag: true
     }
   });
@@ -183,7 +184,7 @@ function createWindow(dashboardPath) {
   mainWindow.loadFile(dashboardPath);
 
   // Intercept calls to window.open() from the renderer.  For HTTP/HTTPS links,
-  // create a new BrowserWindow so that the page runs as a top‑level navigation.
+  // create a new BrowserWindow so the page runs as a top-level navigation.
   // This allows Burble's redirect and cookie handshake to complete properly.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -197,8 +198,9 @@ function createWindow(dashboardPath) {
           sandbox: true
         }
       });
-      // Using the same URL for the referrer mimics a normal browser request
-      popup.loadURL(url, { httpReferrer: url });
+      // Use a browser-like User-Agent and explicit referrer to mimic a real browser request.
+      const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0";
+      popup.loadURL(url, { httpReferrer: url, userAgent: ua });
       return { action: "deny" };
     }
     return { action: "allow" };
