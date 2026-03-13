@@ -35,7 +35,6 @@ function copyFileIfMissing(src, dst) {
 }
 
 function copyDirIfMissing(srcDir, dstDir) {
-  // Copy folder recursively only if destination doesn't exist (preserves user edits)
   if (exists(dstDir)) return;
   ensureDir(dstDir);
   fs.cpSync(srcDir, dstDir, { recursive: true, force: false, errorOnExist: false });
@@ -162,7 +161,9 @@ function createWindow(dashboardPath) {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: true,
+      // Enable the <webview> tag so dropzone manifests can load
+      webviewTag: true
     }
   });
 
@@ -183,7 +184,6 @@ function createWindow(dashboardPath) {
           sandbox: true
         }
       });
-      // Optionally set an explicit referrer to mimic a normal browser request.
       popup.loadURL(url, { httpReferrer: url });
       return { action: "deny" };
     }

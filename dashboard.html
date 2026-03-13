@@ -1446,10 +1446,13 @@ th, td{
   let manifestURL = null;
   let manifestTimer = null;
   let showDashboard = true;
-  // We no longer open a separate popup window for the manifest. Instead, we
-  // display it in an overlay iframe (manifestFrame) so we can supply a
-  // proxied URL that follows redirects and has a proper <base> tag.  The
-  // overlay covers the dashboard when the manifest is shown.
+  // We no longer open a separate popup window for the manifest.  Instead, we
+  // display it in an overlay <webview> element (manifestWebview).  A
+  // <webview> runs in its own renderer process and behaves like an embedded
+  // browser tab.  It is allowed to navigate cross-origin and maintain
+  // cookies, which means the Burble handshake and redirect sequence will
+  // complete correctly.  When the manifest is shown, the webview covers
+  // the entire dashboard; when hidden, the dashboard is visible.
   const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
   const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
 
@@ -1470,7 +1473,10 @@ th, td{
       rawUrl = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
     }
     if (rawUrl) {
-      manifestURL = `${API}/proxy_manifest?url=${encodeURIComponent(rawUrl)}`;
+      // For webview, we use the Burble URL directly.  The webview runs in
+      // its own process and can navigate cross-origin, so the handshake and
+      // redirect happen in the guest instance.  Do not proxy the URL here.
+      manifestURL = rawUrl;
     } else {
       manifestURL = null;
     }
@@ -1490,7 +1496,10 @@ th, td{
   // dashboard is visible.  When false, the iframe is shown and its src is
   // set to manifestURL.  Rotation is controlled by timeouts.
   function toggleManifest() {
-    const frame = document.getElementById("manifestFrame");
+    // Grab the manifest webview (not an iframe).  The manifestWebview element is
+    // defined near the end of the document and covers the dashboard when
+    // visible.  We manage its visibility and src property here.
+    const frame = document.getElementById("manifestWebview");
     if (!manifestURL) {
       // No manifest available: ensure the iframe is hidden and stop rotation.
       if (frame) {
@@ -1538,7 +1547,7 @@ th, td{
     updateManifestURL();
     // Start with the dashboard visible
     showDashboard = true;
-    const frame = document.getElementById("manifestFrame");
+    const frame = document.getElementById("manifestWebview");
     // Close and hide any previously loaded manifest in the iframe
     if (frame) {
       frame.style.display = "none";
@@ -1553,20 +1562,26 @@ th, td{
     // 404s or other problems. The _logListenersAttached flag prevents
     // adding duplicate listeners on subsequent calls.
     if (frame && !frame._logListenersAttached) {
-      frame.addEventListener("load", function() {
+      // Attach logging handlers to the webview exactly once.  The
+      // 'did-finish-load' event fires when the page and all resources
+      // finish loading, and 'did-fail-load' fires on errors.  These help
+      // diagnose 404s or other problems.  We only attach once to avoid
+      // duplicate logs.
+      frame.addEventListener("did-finish-load", function() {
         try {
-          console.log("manifest iframe loaded", {
+          console.log("manifest webview loaded", {
             currentDZ: CURRENT_DZ_CODE,
             url: manifestURL
           });
         } catch (e) {}
       });
-      frame.addEventListener("error", function(event) {
+      frame.addEventListener("did-fail-load", function(event) {
         try {
-          console.error("manifest iframe error", {
+          console.error("manifest webview error", {
             currentDZ: CURRENT_DZ_CODE,
             url: manifestURL,
-            event: event
+            errorCode: event.errorCode,
+            errorDescription: event.errorDescription
           });
         } catch (e) {}
       });
@@ -1576,6 +1591,13 @@ th, td{
     manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
   }
 </script>
-<iframe id="manifestFrame" style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"></iframe>
+<!-- The manifestWebview displays the Burble manifest when rotation is active.
+     It covers the entire viewport and is hidden when not in use.  Using a
+     <webview> instead of an <iframe> allows cross-origin navigation and
+     cookie storage, which is necessary for Burble's handshake/redirect. -->
+<webview id="manifestWebview"
+         style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"
+         allowpopups
+         ></webview>
 </body>
 </html>
