@@ -35,15 +35,12 @@ function copyFileIfMissing(src, dst) {
 }
 
 function copyDirIfMissing(srcDir, dstDir) {
-  // Copy folder recursively only if destination doesn't exist (preserves user edits)
   if (exists(dstDir)) return;
   ensureDir(dstDir);
   fs.cpSync(srcDir, dstDir, { recursive: true, force: false, errorOnExist: false });
 }
 
 function getBundledPath(rel) {
-  // In packaged builds, extraResources are placed under process.resourcesPath
-  // In dev, our repo root is one directory up from electron-wrapper
   if (app.isPackaged) {
     return path.join(process.resourcesPath, rel);
   }
@@ -51,7 +48,6 @@ function getBundledPath(rel) {
 }
 
 function getRuntimeDir() {
-  // Writable per-user location (e.g. C:\Users\<you>\AppData\Roaming\Skydiving Dashboard\runtime)
   return path.join(app.getPath("userData"), "runtime");
 }
 
@@ -77,7 +73,6 @@ function ensureRuntimeFiles() {
     }
   }
 
-  // Delete only the files managed by the installer when version changes
   function clearManagedFiles() {
     const filesToRemove = [
       path.join(runtimeDir, "dashboard.html"),
@@ -96,27 +91,22 @@ function ensureRuntimeFiles() {
     }
   }
 
-  // Remove stale files if this packaged version is newer than the runtime copy
   if (existingVersion !== currentVersion) {
     clearManagedFiles();
   }
 
-  // Source (bundled) paths
   const srcDashboard = getBundledPath("dashboard.html");
   const srcServer = getBundledPath("dz_feed_server.py");
   const srcConfigDir = getBundledPath("config");
 
-  // Destination (runtime) paths
   const dstDashboard = path.join(runtimeDir, "dashboard.html");
   const dstServer = path.join(runtimeDir, "dz_feed_server.py");
   const dstConfigDir = path.join(runtimeDir, "config");
 
-  // Copy files only if they aren’t present
   copyFileIfMissing(srcDashboard, dstDashboard);
   copyFileIfMissing(srcServer, dstServer);
   copyDirIfMissing(srcConfigDir, dstConfigDir);
 
-  // Record the version used to populate runtime files
   try {
     fs.writeFileSync(versionFile, currentVersion);
   } catch {}
@@ -129,7 +119,6 @@ function ensureRuntimeFiles() {
 }
 
 function pickPythonCommandCandidates() {
-  // Try common names.  Windows typically has "python" or "py".
   return isWindows() ? ["python", "py", "python3"] : ["python3", "python"];
 }
 
@@ -151,12 +140,9 @@ async function startServerWithFallback(serverScriptPath, cwd) {
   for (const cmd of candidates) {
     try {
       const proc = spawnServer(cmd, serverScriptPath, cwd);
-      // Wait briefly to see if process exits quickly due to missing Python
       await new Promise((r) => setTimeout(r, 900));
       if (!proc.killed && proc.exitCode === null) return proc;
-    } catch {
-      // Try next
-    }
+    } catch {}
   }
   throw new Error(
     "Could not start Python feed server.\n\nInstall Python 3 and ensure 'python' (or 'py') is available in PATH."
@@ -175,7 +161,6 @@ function createWindow(dashboardPath) {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      // Enable <webview> tags so the manifest can be embedded directly
       webviewTag: true
     }
   });
@@ -183,9 +168,8 @@ function createWindow(dashboardPath) {
   // Load the dashboard
   mainWindow.loadFile(dashboardPath);
 
-  // Intercept calls to window.open() from the renderer.  For HTTP/HTTPS links,
+  // Intercept calls to window.open() from the renderer. For HTTP/HTTPS links,
   // create a new BrowserWindow so the page runs as a top-level navigation.
-  // This allows Burble's redirect and cookie handshake to complete properly.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://") || url.startsWith("https://")) {
       const popup = new BrowserWindow({
@@ -195,10 +179,10 @@ function createWindow(dashboardPath) {
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          sandbox: true
+          // Disable sandbox for the popup so that third-party sites can set cookies
+          sandbox: false
         }
       });
-      // Use a browser-like User-Agent and explicit referrer to mimic a real browser request.
       const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0";
       popup.loadURL(url, { httpReferrer: url, userAgent: ua });
       return { action: "deny" };
@@ -229,7 +213,6 @@ async function shutdownServer() {
   });
 }
 
-// Permit audio/video playback without user interaction
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 app.on("window-all-closed", async () => {
@@ -245,7 +228,6 @@ app.on("before-quit", async (e) => {
 
 app.whenReady().then(async () => {
   try {
-    // Copy bundled files to a writable runtime directory and start the server
     const { runtimeDir, dashboardPath, serverScriptPath } = ensureRuntimeFiles();
     serverProc = await startServerWithFallback(serverScriptPath, runtimeDir);
     createWindow(dashboardPath);
@@ -255,7 +237,6 @@ app.whenReady().then(async () => {
   }
 
   app.on("activate", () => {
-    // On macOS it's common to recreate a window when the dock icon is clicked and no windows are open.
     if (BrowserWindow.getAllWindows().length === 0 && mainWindow === null) {
       const { dashboardPath } = ensureRuntimeFiles();
       createWindow(dashboardPath);
