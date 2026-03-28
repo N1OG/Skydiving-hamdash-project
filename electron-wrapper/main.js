@@ -35,18 +35,12 @@ function copyFileIfMissing(src, dst) {
 }
 
 function copyDirIfMissing(srcDir, dstDir) {
-  // Copy folder recursively only if destination doesn't exist (preserves user edits)
   if (exists(dstDir)) return;
-
   ensureDir(dstDir);
-
-  // Node 16+ supports fs.cpSync; Node 24 definitely does.
   fs.cpSync(srcDir, dstDir, { recursive: true, force: false, errorOnExist: false });
 }
 
 function getBundledPath(rel) {
-  // In packaged builds, extraResources are placed under process.resourcesPath
-  // In dev, our repo root is one directory up from electron-wrapper
   if (app.isPackaged) {
     return path.join(process.resourcesPath, rel);
   }
@@ -54,31 +48,47 @@ function getBundledPath(rel) {
 }
 
 function getRuntimeDir() {
-  // Writable per-user location
-  // Example: C:\Users\<you>\AppData\Roaming\Skydiving Dashboard\
   return path.join(app.getPath("userData"), "runtime");
+}
+
+function getAppVersionString() {
+  try {
+    return String(app.getVersion() || "0.0.0");
+  } catch {
+    return "0.0.0";
+  }
+}
+
+function writeRuntimeVersionJson(runtimeDir) {
+  const versionPath = path.join(runtimeDir, "version.json");
+  const payload = {
+    version: getAppVersionString(),
+    productName: app.getName(),
+    generatedAt: new Date().toISOString()
+  };
+
+  try {
+    fs.writeFileSync(versionPath, JSON.stringify(payload, null, 2), "utf8");
+  } catch {
+    // not fatal
+  }
 }
 
 /*
  * Ensure that the dashboard HTML, feed server script and configuration
  * files in the user's runtime directory are up to date with the version
- * bundled in this release.
- *
- * We store the current packaged version in a file (version.txt) inside
- * the runtime directory.  When launching the app we compare this
- * recorded version against app.getVersion().  If the versions differ,
- * all runtime files managed by the installer are deleted so that fresh
- * copies from the new package are written.  Any user-modified files
- * remain in other files inside runtimeDir.
+ * bundled in this release. Stores the current packaged version in
+ * runtime/version.txt. If the version differs, it deletes the old
+ * dashboard, server script and config before copying the new ones.
  */
 function ensureRuntimeFiles() {
   const runtimeDir = getRuntimeDir();
   ensureDir(runtimeDir);
 
-  // Path to a small file that records which version populated the runtime
   const versionFile = path.join(runtimeDir, "version.txt");
-  const currentVersion = app.getVersion();
+  const currentVersion = getAppVersionString();
   let existingVersion = null;
+
   if (exists(versionFile)) {
     try {
       existingVersion = fs.readFileSync(versionFile, "utf8").trim();
@@ -87,11 +97,11 @@ function ensureRuntimeFiles() {
     }
   }
 
-  // Helper to remove stale runtime contents while leaving unrelated user data intact.
   function clearManagedFiles() {
     const filesToRemove = [
       path.join(runtimeDir, "dashboard.html"),
       path.join(runtimeDir, "dz_feed_server.py"),
+      path.join(runtimeDir, "version.json")
     ];
     const dirsToRemove = [path.join(runtimeDir, "config")];
 
@@ -99,47 +109,42 @@ function ensureRuntimeFiles() {
       try {
         if (exists(f)) fs.unlinkSync(f);
       } catch {
-        // ignore errors
+        // ignore
       }
     }
+
     for (const d of dirsToRemove) {
       try {
         if (exists(d)) fs.rmSync(d, { recursive: true, force: true });
       } catch {
-        // ignore errors
+        // ignore
       }
     }
   }
 
-  // If this is the first run, or if the version has changed since the
-  // runtime directory was populated, clear the managed files so that
-  // updated versions from this release are installed.
   if (existingVersion !== currentVersion) {
     clearManagedFiles();
   }
 
-  // Source (bundled/read-only) paths
   const srcDashboard = getBundledPath("dashboard.html");
   const srcServer = getBundledPath("dz_feed_server.py");
   const srcConfigDir = getBundledPath("config");
 
-  // Destination (writable) paths
   const dstDashboard = path.join(runtimeDir, "dashboard.html");
   const dstServer = path.join(runtimeDir, "dz_feed_server.py");
   const dstConfigDir = path.join(runtimeDir, "config");
 
-  // Copy only if missing so we don't blow away user changes; clearing
-  // stale files above means new versions will be copied.
   copyFileIfMissing(srcDashboard, dstDashboard);
   copyFileIfMissing(srcServer, dstServer);
   copyDirIfMissing(srcConfigDir, dstConfigDir);
 
-  // Record the version that populated these files so we can detect upgrades on next run.
   try {
-    fs.writeFileSync(versionFile, currentVersion);
+    fs.writeFileSync(versionFile, currentVersion, "utf8");
   } catch {
     // not fatal
   }
+
+  writeRuntimeVersionJson(runtimeDir);
 
   return {
     runtimeDir,
@@ -149,7 +154,6 @@ function ensureRuntimeFiles() {
 }
 
 function pickPythonCommandCandidates() {
-  // Try common names. Windows typically has "python" or "py".
   return isWindows() ? ["python", "py", "python3"] : ["python3", "python"];
 }
 
@@ -175,11 +179,11 @@ async function startServerWithFallback(serverScriptPath, cwd) {
   for (const cmd of candidates) {
     try {
       const proc = spawnServer(cmd, serverScriptPath, cwd);
-
-      // Give it a moment to fail fast if python isn't found.
       await new Promise((r) => setTimeout(r, 900));
 
-      if (!proc.killed && proc.exitCode === null) return proc;
+      if (!proc.killed && proc.exitCode === null) {
+        return proc;
+      }
     } catch {
       // try next
     }
@@ -222,7 +226,11 @@ async function shutdownServer() {
 
       setTimeout(() => {
         if (serverProc && serverProc.exitCode === null) {
-          try { serverProc.kill("SIGKILL"); } catch {}
+          try {
+            serverProc.kill("SIGKILL");
+          } catch {
+            // ignore
+          }
         }
         resolve();
       }, 1500);
@@ -247,13 +255,10 @@ app.on("before-quit", async (e) => {
 
 app.whenReady().then(async () => {
   try {
-    // Copy files to writable runtime directory (fixes DZ selection persistence)
     const { runtimeDir, dashboardPath, serverScriptPath } = ensureRuntimeFiles();
 
-    // Start server from runtime directory so ./config/* is writable
     serverProc = await startServerWithFallback(serverScriptPath, runtimeDir);
 
-    // Load dashboard from the same writable runtime directory
     createWindow(dashboardPath);
   } catch (err) {
     dialog.showErrorBox("Skydiving Dashboard", String(err?.message || err));

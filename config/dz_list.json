@@ -1491,22 +1491,6 @@
   "name": "Ultimate Skydiving Adventures",
   "key": "ultimate-skydiving-adventures"
 },
-"uspa": {
-  "burble_dz_id": 12711,
-  "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=12711",
-  "label": "USPA",
-  "country": "US",
-  "state": "VA",
-  "city": "Fredericksburg",
-  "icao": null,
-  "lat": 38.3032,
-  "lon": -77.4605,
-  "radar": null,
-  "radar_station": null,
-  "notes": "United States Parachute Association headquarters; not a drop zone",
-  "name": "USPA",
-  "key": "uspa"
-},
 "virginia-skydiving-center": {
   "burble_dz_id": 5932,
   "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=5932",

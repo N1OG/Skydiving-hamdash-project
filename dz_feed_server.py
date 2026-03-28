@@ -82,7 +82,9 @@ DEFAULT_LIMITS = {
     "max_dir_change_deg": 120,
     "max_gust_kt": 0,
     "min_temp_f": 0,
-    "max_temp_f": 200
+    "max_temp_f": 200,
+    "planned_exit_altitude_msl_ft": 13500,
+    "deployment_altitude_agl_ft": 3500,
     }
 
 BUILTIN_JUMP_PROFILES = {
@@ -97,6 +99,8 @@ BUILTIN_JUMP_PROFILES = {
             "max_aloft_14k_kt": 45,
             "max_shear_14k_kt": 12,
             "max_dir_change_deg": 90,
+            "planned_exit_altitude_msl_ft": 13500,
+            "deployment_altitude_agl_ft": 4000,
         },
     },
     "a_license": {
@@ -110,6 +114,8 @@ BUILTIN_JUMP_PROFILES = {
             "max_aloft_14k_kt": 60,
             "max_shear_14k_kt": 20,
             "max_dir_change_deg": 120,
+            "planned_exit_altitude_msl_ft": 13500,
+            "deployment_altitude_agl_ft": 3500,
         },
     },
     "experienced": {
@@ -120,6 +126,8 @@ BUILTIN_JUMP_PROFILES = {
             "max_aloft_14k_kt": 80,
             "max_shear_14k_kt": 25,
             "max_dir_change_deg": 140,
+            "planned_exit_altitude_msl_ft": 13500,
+            "deployment_altitude_agl_ft": 3500,
         },
     },
 }
@@ -769,6 +777,8 @@ def _profile_is_complete(p: Dict[str, Any]) -> Tuple[bool, List[str]]:
         missing.append("icao")
     if p.get("lat") is None or p.get("lon") is None:
         missing.append("lat/lon")
+    if p.get("field_elevation_ft") is None:
+        missing.append("field_elevation_ft")
     return (len(missing) == 0), missing
 
 
@@ -844,6 +854,192 @@ STORE = Store(
     profiles=_safe_read_json(DZ_PROFILES_PATH, default={}),
     active=_safe_read_json(ACTIVE_DZ_PATH, default={"code": "", "active_profile_id": "a_license", "limits_overrides": {}}),
 )
+
+
+def parse_visibility_sm(raw: Optional[str], metar: Dict[str, Any]) -> Optional[float]:
+    if isinstance(metar.get("visibility_sm"), (int, float)):
+        try:
+            return float(metar.get("visibility_sm"))
+        except Exception:
+            pass
+    txt = str(raw or "")
+    m = re.search(r"\b(P?)(\d+)SM\b", txt)
+    if m:
+        val = float(m.group(2))
+        return val if m.group(1) != "P" else val
+    m = re.search(r"\b(\d+) (\d)/(\d)SM\b", txt)
+    if m:
+        return float(m.group(1)) + (float(m.group(2)) / float(m.group(3)))
+    m = re.search(r"\b(\d)/(\d)SM\b", txt)
+    if m:
+        return float(m.group(1)) / float(m.group(2))
+    return None
+
+
+def parse_cloud_layers(raw: Optional[str]) -> List[Dict[str, Any]]:
+    layers = []
+    txt = str(raw or "")
+    for cover, base in re.findall(r"\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b", txt):
+        try:
+            base_agl = int(base) * 100
+        except Exception:
+            continue
+        layers.append({"cover": cover, "base_agl_ft": base_agl})
+    return layers
+
+
+def calc_pressure_altitude(field_elevation_ft: float, altimeter_inhg: float) -> float:
+    return float(field_elevation_ft) + (29.92 - float(altimeter_inhg)) * 1000.0
+
+
+def calc_isa_temp_c(pressure_altitude_ft: float) -> float:
+    return 15.0 - ((float(pressure_altitude_ft) / 1000.0) * 2.0)
+
+
+def calc_density_altitude_ft(field_elevation_ft: float, altimeter_inhg: float, temp_c: float) -> float:
+    pa = calc_pressure_altitude(field_elevation_ft, altimeter_inhg)
+    isa = calc_isa_temp_c(pa)
+    return pa + 120.0 * (float(temp_c) - isa)
+
+
+def get_density_altitude_band(da_ft: Optional[float]) -> Dict[str, Any]:
+    if da_ft is None:
+        return {"status": "unknown", "label": "Unknown", "color": "muted", "reason": "Density altitude unavailable"}
+    if da_ft <= 2000:
+        return {"status": "good", "label": "Green", "color": "good", "reason": "Normal canopy performance"}
+    if da_ft <= 4000:
+        return {"status": "caution", "label": "Yellow", "color": "warn", "reason": "Faster landings, reduced flare margin"}
+    if da_ft <= 6000:
+        return {"status": "caution", "label": "Orange", "color": "warn", "reason": "Significant canopy performance change"}
+    return {"status": "caution", "label": "Red", "color": "bad", "reason": "High-risk canopy and landing conditions"}
+
+
+def get_visibility_status(visibility_sm: Optional[float], planned_exit_altitude_msl_ft: float) -> Dict[str, Any]:
+    threshold = 5.0 if float(planned_exit_altitude_msl_ft) >= 10000 else 3.0
+    label = f"{int(threshold)} SM minimum for {'>=10k' if threshold == 5.0 else '<10k'} operations"
+    if visibility_sm is None:
+        return {"status": "no_go", "reason": "Visibility unavailable", "threshold_sm": threshold, "visibility_sm": None, "label": label}
+    if visibility_sm < threshold:
+        return {"status": "no_go", "reason": f"Visibility below {int(threshold)} SM for {'>10k' if threshold == 5.0 else '<10k'} operations", "threshold_sm": threshold, "visibility_sm": visibility_sm, "label": label}
+    return {"status": "good", "reason": f"Visibility meets {int(threshold)} SM requirement", "threshold_sm": threshold, "visibility_sm": visibility_sm, "label": label}
+
+
+def get_cloud_status(cloud_layers: List[Dict[str, Any]], planned_exit_altitude_msl_ft: float, deployment_altitude_agl_ft: float, field_elevation_ft: float) -> Dict[str, Any]:
+    if not cloud_layers:
+        return {"status": "good", "reason": "No reported cloud layers affecting jump profile", "ceiling_agl_ft": None, "layers": []}
+    exit_agl = max(0.0, float(planned_exit_altitude_msl_ft) - float(field_elevation_ft))
+    deploy_agl = float(deployment_altitude_agl_ft)
+    bkn_ovc = [l for l in cloud_layers if l.get('cover') in ('BKN', 'OVC')]
+    ceiling = min([l['base_agl_ft'] for l in bkn_ovc], default=None)
+    reasons = []
+    status = 'good'
+    for layer in cloud_layers:
+        base = float(layer.get('base_agl_ft') or 0)
+        cover = layer.get('cover') or ''
+        if cover in ('BKN', 'OVC') and base < exit_agl:
+            status = 'caution'
+            reasons.append(f"{cover} layer below planned exit altitude")
+        if abs(base - deploy_agl) <= 1500:
+            status = 'no_go' if cover in ('BKN', 'OVC') and base <= deploy_agl + 1000 else max(status, 'caution')
+            reasons.append(f"{cover} layer conflicts with deployment band")
+        if deploy_agl <= base <= exit_agl:
+            reasons.append(f"{cover} layer present in freefall band")
+            if status != 'no_go':
+                status = 'caution'
+    if ceiling is not None and ceiling <= deploy_agl + 1000:
+        status = 'no_go'
+        reasons.append("Low ceiling near deployment altitude")
+    if not reasons:
+        reasons.append("Cloud layers do not appear to conflict with jump profile")
+    return {"status": status, "reason": "; ".join(dict.fromkeys(reasons)), "ceiling_agl_ft": ceiling, "layers": cloud_layers}
+
+
+def _status_rank(value: str) -> int:
+    return {"good": 0, "caution": 1, "no_go": 2}.get(value, 2)
+
+
+def evaluate_weather(profile: Dict[str, Any], limits: Dict[str, Any], metar: Dict[str, Any], aloft: Dict[str, Any]) -> Dict[str, Any]:
+    reasons = []
+    components = {}
+    final_status = 'good'
+
+    wind_status = 'good'
+    ws = metar.get('wind_speed_kt')
+    wg = metar.get('wind_gust_kt')
+    gust_spread = None
+    if ws is None:
+        wind_status = 'no_go'
+        reasons.append('Surface wind unavailable')
+    else:
+        max_surface = limits.get('max_surface_wind_kt')
+        max_gust = limits.get('max_gust_kt')
+        if max_surface is not None and float(ws) > float(max_surface):
+            wind_status = 'no_go'
+            reasons.append(f'Surface wind {ws} kt exceeds limit {max_surface} kt')
+        if wg is not None:
+            gust_spread = float(wg) - float(ws)
+            if max_gust is not None and float(wg) > float(max_gust):
+                wind_status = 'no_go'
+                reasons.append(f'Gust {wg} kt exceeds limit {max_gust} kt')
+            max_spread = limits.get('max_gust_spread_kt')
+            if max_spread is not None and gust_spread > float(max_spread):
+                wind_status = 'caution' if wind_status != 'no_go' else wind_status
+                reasons.append(f'Gust spread {gust_spread:.0f} kt exceeds limit {max_spread} kt')
+    components['wind'] = {'status': wind_status, 'wind_speed_kt': ws, 'wind_gust_kt': wg, 'gust_spread_kt': gust_spread}
+
+    planned_exit = float(limits.get('planned_exit_altitude_msl_ft') or 13500)
+    deploy = float(limits.get('deployment_altitude_agl_ft') or 3500)
+    field_elev = profile.get('field_elevation_ft')
+    altim = metar.get('altim_in_hg')
+    temp_c = metar.get('temp_c')
+    visibility_sm = parse_visibility_sm(metar.get('raw'), metar)
+    vis = get_visibility_status(visibility_sm, planned_exit)
+    components['visibility'] = vis
+    if vis['status'] != 'good':
+        reasons.append(vis['reason'])
+
+    cloud_layers = parse_cloud_layers(metar.get('raw'))
+    clouds = get_cloud_status(cloud_layers, planned_exit, deploy, field_elev or 0)
+    components['clouds'] = clouds
+    if clouds['status'] != 'good':
+        reasons.append(clouds['reason'])
+
+    pa = isa = da = None
+    if field_elev is not None and altim is not None and temp_c is not None:
+        pa = calc_pressure_altitude(field_elev, altim)
+        isa = calc_isa_temp_c(pa)
+        da = calc_density_altitude_ft(field_elev, altim, temp_c)
+    da_band = get_density_altitude_band(da)
+    components['density_altitude'] = {
+        'status': da_band['status'], 'reason': da_band['reason'], 'pressure_altitude_ft': None if pa is None else round(pa),
+        'isa_temp_c': None if isa is None else round(isa, 1), 'density_altitude_ft': None if da is None else round(da), 'band': da_band['label']
+    }
+    if da_band['status'] != 'good':
+        reasons.append(f"Density altitude elevated — {da_band['reason'].lower()}")
+
+    for part in components.values():
+        final_status = max([final_status, part['status']], key=_status_rank)
+
+    friendly = {'good': 'GOOD', 'caution': 'CAUTION', 'no_go': 'NO GO'}[final_status]
+    return {
+        'status': final_status,
+        'label': friendly,
+        'reasons': list(dict.fromkeys(reasons)) or ['Conditions within configured limits'],
+        'components': components,
+        'performance': {
+            'field_elevation_ft': field_elev,
+            'altimeter_inhg': altim,
+            'temp_c': temp_c,
+            'temp_f': metar.get('temp_f'),
+            'pressure_altitude_ft': None if pa is None else round(pa),
+            'isa_temp_c': None if isa is None else round(isa, 1),
+            'density_altitude_ft': None if da is None else round(da),
+            'planned_exit_altitude_msl_ft': round(planned_exit),
+            'deployment_altitude_agl_ft': round(deploy),
+            'visibility_sm': visibility_sm,
+            'cloud_layers': cloud_layers,
+        }
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -968,6 +1164,7 @@ class Handler(BaseHTTPRequestHandler):
                     "runway_heading_deg": p.get("runway_heading_deg"),
                     "burble_dz_id": p.get("burble_dz_id"),
                     "burble_public_url": p.get("burble_public_url"),
+                    "field_elevation_ft": p.get("field_elevation_ft"),
                     "complete": ok,
                     "missing": missing,
                 })
@@ -1036,6 +1233,7 @@ class Handler(BaseHTTPRequestHandler):
                     "burble_dz_id": prof.get("burble_dz_id"),
                     "burble_public_url": prof.get("burble_public_url"),
                     "radar_station": radar_station,
+                    "field_elevation_ft": prof.get("field_elevation_ft"),
                 },
                 "dz_metadata_ok": dz_ok,
                 "dz_metadata_missing": dz_missing,
@@ -1043,6 +1241,7 @@ class Handler(BaseHTTPRequestHandler):
                 "active_profile_id": STORE.active_profile_id,
                 "metar": metar,
                 "aloft": aloft,
+                "weather": evaluate_weather({**prof, "field_elevation_ft": prof.get("field_elevation_ft")}, STORE.get_limits(), metar, aloft),
                 "radar": {
                     "station": radar_station,
                     "image_url": build_radar_image_url(radar_station, prof.get('state','')),
@@ -1052,6 +1251,101 @@ class Handler(BaseHTTPRequestHandler):
                 },
             })
             return
+
+        # Proxy remote manifest pages to work around X-Frame-Options restrictions.
+        # Usage: /proxy_manifest?url=<fully encoded remote URL>
+        # Example: /proxy_manifest?url=https%3A%2F%2Fdzm.burblesoft.com%2Fjumper_manifest_public%3Fdz_id%3D14331
+        if path == "/proxy_manifest":
+            # We reuse the parsed query parameters from above.
+            remote_url = None
+            if "url" in q and q["url"]:
+                remote_url = q["url"][0]
+            # As a fallback, allow dz_code or dz_id param to construct the URL.
+            if not remote_url:
+                dz_code = q.get("dz_code", [None])[0]
+                dz_id = q.get("dz_id", [None])[0]
+                if dz_code:
+                    # Look up the code in profiles to find the burble_public_url or id.
+                    code = (dz_code or "").strip()
+                    prof = STORE.profiles.get(code) if code else None
+                    if isinstance(prof, dict):
+                        remote_url = prof.get("burble_public_url")
+                        # Construct from burble_dz_id if no URL available.
+                        if not remote_url and prof.get("burble_dz_id"):
+                            remote_url = f"https://dzm.burblesoft.com/jumper_manifest_public?dz_id={prof.get('burble_dz_id')}"
+                elif dz_id:
+                    # Construct from provided dz_id
+                    remote_url = f"https://dzm.burblesoft.com/jumper_manifest_public?dz_id={dz_id}"
+            if not remote_url:
+                self._send_json(400, {"ok": False, "error": "missing url/dz_code/dz_id for proxy_manifest"})
+                return
+            # Fetch the remote content and follow redirects/cookies.  We use a cookie
+            # jar to allow Burble's session handshake to complete (many pages set a
+            # cookie on the first request and redirect to a clean URL).  Using a
+            # full-featured opener with a Firefox-like User-Agent mimics a real
+            # browser so the remote server returns a complete HTML page.  After
+            # retrieving the final page, we inject a <base> tag to ensure all
+            # relative links (scripts, CSS, forms) resolve against the original
+            # origin, not our proxy.  Without this, relative references will 404
+            # because the browser would try to fetch them from our localhost server.
+            try:
+                import http.cookiejar
+                from urllib.parse import urlsplit
+                cj = http.cookiejar.CookieJar()
+                opener = urllib.request.build_opener(
+                    urllib.request.HTTPCookieProcessor(cj),
+                    urllib.request.HTTPRedirectHandler()
+                )
+                opener.addheaders = [
+                    ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"),
+                    ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+                ]
+                resp = opener.open(remote_url, timeout=15.0)
+                status = getattr(resp, "status", 200)
+                content = resp.read().decode("utf-8", errors="replace")
+                # Determine the final URL after redirects (e.g. Burble may redirect
+                # /jumper_manifest_public?dz_id=XXX -> /index.php/jumper_manifest_public?dz_id=XXX)
+                final_url = resp.geturl() if hasattr(resp, "geturl") else remote_url
+                parts = urlsplit(final_url)
+                base_href = f"{parts.scheme}://{parts.netloc}/"
+                # Inject a <base> tag into the <head>.  If there's no <head>, create one.
+                inject_tag = f"<base href=\"{base_href}\">"
+                modified = content
+                try:
+                    # Only inject if <base> isn't already present
+                    if "<base" not in content.lower():
+                        if "<head" in content.lower():
+                            # Insert after the opening <head> tag
+                            import re
+                            modified = re.sub(
+                                r"(?i)<head([^>]*)>",
+                                lambda m: m.group(0) + inject_tag,
+                                content,
+                                count=1,
+                            )
+                        else:
+                            # No <head>; prepend the base at the top of the document
+                            modified = inject_tag + content
+                except Exception:
+                    # In case of regex failure, fall back to simple prepend
+                    modified = inject_tag + content
+                # Relay the modified HTML to the client
+                self.send_response(200)
+                self._send_cors()
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store, max-age=0")
+                self.end_headers()
+                self.wfile.write(modified.encode("utf-8"))
+                return
+            except Exception as e:
+                # If any error occurs (including HTTP errors), return JSON error
+                err_msg = getattr(e, "reason", None) or str(e)
+                try:
+                    status = getattr(e, "code", 502)
+                except Exception:
+                    status = 502
+                self._send_json(status, {"ok": False, "error": f"proxy fetch failed ({err_msg})"})
+                return
 
         self._send_json(404, {"ok": False, "error": f"unknown path {path}"})
 

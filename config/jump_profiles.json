@@ -5,8 +5,9 @@
       "max_surface_wind_kt": 19,
       "max_gust_spread_kt": 20,
       "max_aloft_14k_kt": 35,
-      "max_shear_14k_kt": 60,
-      "max_dir_change_deg": 180
+      "max_gust_kt": 25,
+      "planned_exit_altitude_msl_ft": 13500,
+      "deployment_altitude_agl_ft": 3500
     }
   },
   "experienced": {
@@ -16,8 +17,24 @@
       "max_gust_spread_kt": 12,
       "min_temp_f": 65,
       "max_temp_f": 200,
-      "max_shear_14k_kt": 25,
-      "max_dir_change_deg": 140
+      "max_aloft_14k_kt": 35,
+      "planned_exit_altitude_msl_ft": 13500,
+      "deployment_altitude_agl_ft": 3500
+    }
+  },
+  "student": {
+    "name": "Student",
+    "limits": {
+      "max_surface_wind_kt": 14,
+      "max_gust_kt": 18,
+      "min_temp_f": 32,
+      "max_temp_f": 95,
+      "max_gust_spread_kt": 6,
+      "max_aloft_14k_kt": 45,
+      "max_shear_14k_kt": 12,
+      "max_dir_change_deg": 90,
+      "planned_exit_altitude_msl_ft": 13500,
+      "deployment_altitude_agl_ft": 4000
     }
   }
 }

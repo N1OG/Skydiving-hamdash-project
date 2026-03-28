@@ -527,7 +527,7 @@ th, td{
     <button id="refreshBtn" title="Refresh live data">Refresh</button>
     <button id="limitsBtn" title="Edit jump limits for the active profile">Limits</button>
 <div class="spacer"></div>
-    <div class="small" id="statusText">—</div>
+    <div class="small" id="buildStamp" style="margin-right:12px;">Build —</div><div class="small" id="statusText">—</div>
   </div>
 
   <div class="wrap">
@@ -573,8 +573,17 @@ th, td{
               <div class="kv"><div class="k">Station</div><div class="v" id="metarStation">—</div></div>
               <div class="kv"><div class="k">Wind (kt)</div><div class="v" id="metarWind">—</div></div>
               <div class="kv"><div class="k">Gust (kt)</div><div class="v" id="metarGust">—</div></div>
-              <div class="kv"><div class="k">Temp (°F)</div><div class="v" id="metarTemp">—</div></div>
+              <div class="kv"><div class="k">Temp (°F/°C)</div><div class="v" id="metarTemp">—</div></div>
               <div class="kv"><div class="k">Alt (inHg)</div><div class="v" id="metarAltim">—</div></div>
+              <div class="kv"><div class="k">Field Elev</div><div class="v" id="fieldElev">—</div></div>
+              <div class="kv"><div class="k">Pressure Alt</div><div class="v" id="pressureAlt">—</div></div>
+              <div class="kv"><div class="k">Density Alt</div><div class="v" id="densityAlt">—</div></div>
+            </div>
+            <div class="chips" id="riskChips">
+              <div class="chip" id="chipWind">Wind —</div>
+              <div class="chip" id="chipVisibility">Visibility —</div>
+              <div class="chip" id="chipClouds">Clouds —</div>
+              <div class="chip" id="chipDA">Density Alt —</div>
             </div>
 
             <div style="margin-top:10px;" class="badge mono" id="metarRaw">METAR: —</div>
@@ -1284,13 +1293,40 @@ th, td{
     const st = await apiGet("/status.json");
     $("statusText").textContent = st.ok ? `Server OK · active: ${st.active_code || "—"}` : "Server not ready";
     if (st && st.active_code) CURRENT_DZ_CODE = st.active_code;
+    try {
+      const build = await fetch(API + "/build_info.json", {cache:"no-store"});
+      if (build.ok){
+        const info = await build.json();
+        $("buildStamp").textContent = `Build v${info.version || "—"}`;
+      }
+    } catch {}
     return st;
+  }
+
+  function setWeatherRiskUI(snap){
+    const wx = snap.weather || {};
+    const perf = wx.performance || {};
+    const cmp = wx.components || {};
+    const reasons = (wx.reasons || []).join(" · ");
+    const mapChip = (id, label, status) => {
+      const el = $(id); if (!el) return;
+      el.textContent = `${label} ${status ? status.toUpperCase().replace("NO_GO","NO GO") : "—"}`;
+      el.className = "chip " + (status === "good" ? "ok" : (status === "caution" ? "stale" : (status === "no_go" ? "fail" : "")));
+    };
+    $("fieldElev").textContent = perf.field_elevation_ft != null ? `${perf.field_elevation_ft} ft` : "—";
+    $("pressureAlt").textContent = perf.pressure_altitude_ft != null ? `${perf.pressure_altitude_ft} ft` : "—";
+    $("densityAlt").textContent = perf.density_altitude_ft != null ? `${perf.density_altitude_ft} ft` : "—";
+    mapChip("chipWind", "Wind", (cmp.wind || {}).status);
+    mapChip("chipVisibility", "Visibility", (cmp.visibility || {}).status);
+    mapChip("chipClouds", "Clouds", (cmp.clouds || {}).status);
+    mapChip("chipDA", "Density Alt", (cmp.density_altitude || {}).status);
+    $("reasonBadge").innerHTML = "<strong>Reasons:</strong> " + (reasons || "Conditions within configured limits");
   }
 
   async function refreshSnapshot(){
     const snap = await apiGet("/snapshot.json");
     if (!snap || !snap.ok){
-      $("goText").textContent = "NO-GO";
+      $("goText").textContent = "NO GO";
       $("goText").className = "big bad";
       $("reasonBadge").innerHTML = "<strong>Reasons:</strong> " + (snap.error || "snapshot failed");
       return;
@@ -1298,6 +1334,7 @@ th, td{
 
     setDecisionUI(snap);
     setSurfaceUI(snap);
+    setWeatherRiskUI(snap);
     setAloftUI(snap);
     setVisualUI(snap);
     setLimitsUI(snap);
@@ -1434,11 +1471,14 @@ th, td{
       }, 5 * 60 * 1000);
     }catch(e){
       $("statusText").textContent = "Cannot reach server at " + API;
-      $("goText").textContent = "NO-GO";
+      $("goText").textContent = "NO GO";
       $("goText").className = "big bad";
       $("reasonBadge").innerHTML = "<strong>Reasons:</strong> server unreachable";
     }
   })();
+
+  // Manifest rotation intentionally left disabled on this branch.
+  function startManifestRotation() {}
 
   // --- Manifest rotation ---
   // Rotates between showing the dashboard and the Burble manifest for the active DZ.
@@ -1446,33 +1486,92 @@ th, td{
   let manifestURL = null;
   let manifestTimer = null;
   let showDashboard = true;
+  // We no longer open a separate popup window for the manifest.  Instead, we
+  // display it in an overlay <webview> element (manifestWebview).  A
+  // <webview> runs in its own renderer process and behaves like an embedded
+  // browser tab.  It is allowed to navigate cross-origin and maintain
+  // cookies, which means the Burble handshake and redirect sequence will
+  // complete correctly.  When the manifest is shown, the webview covers
+  // the entire dashboard; when hidden, the dashboard is visible.
   const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
   const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
 
   // Refresh the manifestURL based on the current DZ. Called whenever the active DZ changes.
+  // We prefer the explicit burble_public_url from the DZ metadata. If that is
+  // missing or empty, fall back to constructing a URL from the burble_dz_id.
   function updateManifestURL() {
     const dz = getDzMeta(CURRENT_DZ_CODE);
-    manifestURL = (dz && dz.burble_public_url) ? dz.burble_public_url.trim() : null;
+    // Determine which URL to display.  We always call the proxy_manifest
+    // endpoint on our feed server so that the remote Burble page is fetched
+    // server-side with redirect/cookie handling and a <base> tag injected.  If
+    // an explicit burble_public_url is provided, use it; otherwise construct
+    // from burble_dz_id.  If neither is available, manifestURL will be null.
+    let rawUrl = null;
+    if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
+      rawUrl = String(dz.burble_public_url).trim();
+    } else if (dz && dz.burble_dz_id) {
+      rawUrl = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
+    }
+    if (rawUrl) {
+      // For webview, we use the Burble URL directly.  The webview runs in
+      // its own process and can navigate cross-origin, so the handshake and
+      // redirect happen in the guest instance.  Do not proxy the URL here.
+      manifestURL = rawUrl;
+    } else {
+      manifestURL = null;
+    }
+    // Log the final URL for debugging (appears in the console)
+    try {
+      console.log("updateManifestURL:", {
+        currentDZ: CURRENT_DZ_CODE,
+        rawUrl: rawUrl,
+        manifestURL: manifestURL
+      });
+    } catch (e) {}
   }
 
-  // Toggle between the dashboard and manifest page. Uses a full-screen iframe.
+  // Toggle between showing the dashboard and the manifest page.  We use a
+  // full-screen overlay iframe (#manifestFrame) to display the proxied
+  // manifest.  When showDashboard is true, the iframe is hidden and the
+  // dashboard is visible.  When false, the iframe is shown and its src is
+  // set to manifestURL.  Rotation is controlled by timeouts.
   function toggleManifest() {
-    const frame = document.getElementById("manifestFrame");
+    // Grab the manifest webview (not an iframe).  The manifestWebview element is
+    // defined near the end of the document and covers the dashboard when
+    // visible.  We manage its visibility and src property here.
+    const frame = document.getElementById("manifestWebview");
     if (!manifestURL) {
-      // No external manifest for this DZ: ensure frame is hidden and stop rotation.
-      frame.style.display = "none";
+      // No manifest available: ensure the iframe is hidden and stop rotation.
+      if (frame) {
+        frame.style.display = "none";
+        frame.src = "";
+      }
       showDashboard = true;
       return;
     }
     if (showDashboard) {
-      // Switch to showing the Burble manifest
-      frame.src = manifestURL;
-      frame.style.display = "block";
+      // Switch from dashboard to manifest: show the iframe and load the URL
+      try {
+        console.log("toggleManifest: showing manifest", {
+          currentDZ: CURRENT_DZ_CODE,
+          url: manifestURL
+        });
+      } catch (e) {}
+      if (frame) {
+        frame.src = manifestURL;
+        frame.style.display = "block";
+      }
       showDashboard = false;
       manifestTimer = window.setTimeout(toggleManifest, MANIFEST_DURATION_MS);
     } else {
-      // Switch back to the dashboard (hide the manifest)
-      frame.style.display = "none";
+      // Switch back to dashboard: hide the iframe and clear its src
+      try {
+        console.log("toggleManifest: hiding manifest, returning to dashboard");
+      } catch (e) {}
+      if (frame) {
+        frame.style.display = "none";
+        frame.src = "";
+      }
       showDashboard = true;
       manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
     }
@@ -1484,13 +1583,82 @@ th, td{
       window.clearTimeout(manifestTimer);
       manifestTimer = null;
     }
-    // Always start from the dashboard view
-    showDashboard = true;
+    // Refresh the manifest URL for the current DZ
     updateManifestURL();
-    // Kick off the rotation cycle
-    toggleManifest();
+    // Start with the dashboard visible
+    showDashboard = true;
+    const frame = document.getElementById("manifestWebview");
+    // Close and hide any previously loaded manifest in the iframe
+    if (frame) {
+      frame.style.display = "none";
+      frame.src = "";
+    }
+    // If there's no manifest URL for the active DZ, leave the dashboard visible and stop rotation
+    if (!manifestURL) {
+      return;
+    }
+    // Attach logging handlers to the iframe exactly once. These handlers
+    // report success or failure of loading the manifest. They help diagnose
+    // 404s or other problems. The _logListenersAttached flag prevents
+    // adding duplicate listeners on subsequent calls.
+    if (frame && !frame._logListenersAttached) {
+      // Attach logging handlers to the webview exactly once.  The
+      // 'did-finish-load' event fires when the page and all resources
+      // finish loading, and 'did-fail-load' fires on errors.  These help
+      // diagnose 404s or other problems.  We only attach once to avoid
+      // duplicate logs.
+      frame.addEventListener("did-finish-load", function() {
+        try {
+          console.log("manifest webview loaded", {
+            currentDZ: CURRENT_DZ_CODE,
+            url: manifestURL
+          });
+        } catch (e) {}
+      });
+      frame.addEventListener("did-fail-load", function(event) {
+        try {
+          console.error("manifest webview error", {
+            currentDZ: CURRENT_DZ_CODE,
+            url: manifestURL,
+            errorCode: event.errorCode,
+            errorDescription: event.errorDescription
+          });
+        } catch (e) {}
+      });
+      frame._logListenersAttached = true;
+    }
+    // Schedule the first switch to the manifest after showing the dashboard
+    manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
   }
+
+
+  const __origSetDecisionUI = setDecisionUI;
+  setDecisionUI = function(snapshot){
+    __origSetDecisionUI(snapshot);
+    const wx = snapshot.weather || {};
+    const label = wx.label || 'NO GO';
+    const status = wx.status || 'no_go';
+    $("goText").textContent = label;
+    $("goText").className = 'big ' + (status === 'good' ? 'good' : (status === 'caution' ? 'warn' : 'bad'));
+  };
+
+  const __origSetSurfaceUI = setSurfaceUI;
+  setSurfaceUI = function(snapshot){
+    __origSetSurfaceUI(snapshot);
+    const m = snapshot.metar || {};
+    const tf = m.temp_f != null ? `${m.temp_f}°F` : '—';
+    const tc = m.temp_c != null ? `${m.temp_c}°C` : '—';
+    $("metarTemp").textContent = `${tf} / ${tc}`;
+  };
+
 </script>
-<iframe id="manifestFrame" style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"></iframe>
-</body>
+<!-- The manifestWebview displays the Burble manifest when rotation is active.
+     It covers the entire viewport and is hidden when not in use.  Using a
+     <webview> instead of an <iframe> allows cross-origin navigation and
+     cookie storage. -->
+<webview id="manifestWebview"
+         style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"
+         allowpopups
+         useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"
+         ></webview></body>
 </html>

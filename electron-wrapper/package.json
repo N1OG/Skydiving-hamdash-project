@@ -1,6 +1,6 @@
 {
   "name": "skydiving-dashboard-electron-wrapper",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "Electron wrapper for Skydiving Dashboard (starts local Python feed + fullscreen app window)",
   "main": "main.js",
   "private": true,
