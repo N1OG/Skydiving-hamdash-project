@@ -54,6 +54,66 @@
     font-size:20px;
   }
   .topbar .spacer{ flex:1; }
+
+  .topbarClock{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:6px 12px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:14px;
+    background:rgba(255,255,255,.05);
+    min-width:250px;
+  }
+  .clockPrimaryWrap{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    min-width:0;
+  }
+  .clockPrimary{
+    font-family:var(--mono);
+    font-size:26px;
+    font-weight:900;
+    line-height:1;
+    letter-spacing:.04em;
+    color:#7fd8ff;
+  }
+  .clockPrimaryMeta{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    line-height:1.1;
+  }
+  .clockSecondaryWrap{
+    margin-left:auto;
+    display:grid;
+    grid-template-columns:auto auto;
+    gap:2px 8px;
+    align-items:center;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .clockLocalTag,.clockUtcTag{ color:var(--muted); }
+  .clockSecondary{
+    font-family:var(--mono);
+    font-size:16px;
+    font-weight:800;
+    color:var(--text);
+    line-height:1;
+  }
+  .topbarStatus{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    white-space:nowrap;
+  }
+  #statusText{ display:none; }
   .ctl{
     display:flex;
     flex-direction:row;
@@ -102,21 +162,21 @@
   padding:var(--gap);
   display:grid;
   /* Give Winds Aloft more vertical room (bottom row) */
-  grid-template-rows: 40% 60%;
+  grid-template-rows: 42% 58%;
   gap:var(--gap);
   min-height:0;
 }
 
 .rowTop{
   display:grid;
-  grid-template-columns: 33% 67%;
+  grid-template-columns: minmax(420px, 34%) minmax(0, 66%);
   gap:var(--gap);
   min-height:0;
 }
 
 .rowBottom{
   display:grid;
-  grid-template-columns: 25% 37% 38%;
+  grid-template-columns: minmax(300px, 24%) minmax(0, 38%) minmax(0, 38%);
   gap:var(--gap);
   min-height:0;
 }
@@ -171,10 +231,14 @@
   }
 
   .decision{
-    display:flex;
-    flex-direction:column;
-    gap:0;
+    display:grid;
+    grid-template-rows:minmax(0,1.12fr) minmax(0,.88fr);
+    gap:var(--gap);
+    min-height:0;
 }
+.decisionPanel,
+.decisionBreakdownPanel{ min-height:0; }
+.decisionBreakdownPanel{ padding:10px 12px; }
 .decisionCard{
     display:flex;
     flex-direction:column;
@@ -187,7 +251,7 @@
     background: linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.18));
   }
   .big{
-    font-size:52px;
+    font-size:46px;
     font-weight:950;
     letter-spacing: .6px;
     line-height: 1;
@@ -385,6 +449,7 @@ th, td{
     gap:8px;
     margin-top:10px;
   }
+  #riskChips{ display:none !important; }
   .chip{
     padding:6px 10px;
     border-radius:999px;
@@ -497,15 +562,89 @@ th, td{
 }
 
 /* micro-flash on DZ change */
-.panel.clock.flash{
-  animation: clockFlash 280ms ease-out;
+
+
+
+.decisionBreakdownPanel{ margin-top:10px; }
+.decisionBreakdown{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:8px;
 }
-@keyframes clockFlash{
-  0% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 18px 60px rgba(0,0,0,0.55); }
-  40%{ box-shadow: inset 0 0 0 1px rgba(0,180,255,0.25), 0 18px 70px rgba(0,0,0,0.62), 0 0 28px rgba(0,170,255,0.22); }
-  100%{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 18px 60px rgba(0,0,0,0.55); }
+.breakRow{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:
+    "label label"
+    "state detail";
+  column-gap:8px;
+  row-gap:4px;
+  align-items:center;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+  min-width:0;
+}
+.breakLabel{
+  grid-area:label;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+  line-height:1;
+  text-transform:uppercase;
+}
+.breakState{
+  grid-area:state;
+  justify-self:start;
+  min-width:64px;
+  text-align:center;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.05em;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);
+  line-height:1.1;
+}
+.breakState.good{ color:var(--good); border-color:rgba(46,204,113,.35); background:rgba(46,204,113,.10); }
+.breakState.caution{ color:var(--warn); border-color:rgba(245,197,66,.45); background:rgba(245,197,66,.12); }
+.breakState.bad{ color:var(--bad); border-color:rgba(255,77,77,.35); background:rgba(255,77,77,.10); }
+.breakState.elevated{ color:#ff9f43; border-color:rgba(255,159,67,.45); background:rgba(255,159,67,.12); }
+.breakState.info{ color:var(--text); }
+.breakDetail{
+  grid-area:detail;
+  min-width:0;
+  color:var(--text);
+  font-size:12px;
+  font-weight:800;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  line-height:1.1;
 }
 
+.topbar .topbarExit{ margin-left:10px; }
+.exitBtn{
+  background:rgba(255,90,90,.12);
+  border:1px solid rgba(255,120,120,.28);
+}
+.exitBtn:hover{ background:rgba(255,90,90,.20); }
+
+.surfaceWrap{ grid-template-columns: 1.8fr .72fr; }
+.arrowBox{ width:220px; height:220px; }
+.landingArrow{ width:185px; height:185px; }
+.dirBig{ font-size:32px; }
+.surfaceCards .kv .v#densityAlt{ color:#8ff7da; font-size:20px; }
+
+@media (max-width: 1540px){
+  .decisionBreakdown{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1180px){
+  .decisionBreakdown{ grid-template-columns:1fr; }
+}
 
 .decision .decisionPanel{flex:0 0 auto;}
 </style>
@@ -513,6 +652,20 @@ th, td{
 <body>
   <div class="topbar">
     <div class="title">Skydiving Dashboard</div>
+    <div class="topbarClock" id="clockPanel" aria-label="Clock">
+      <div class="clockPrimaryWrap">
+        <span class="clockPrimary" id="clockLocalTime">--:--</span>
+        <span class="clockPrimaryMeta">
+          <span id="clockLocalDow">---</span>
+          <span id="clockLocalDate">--/--</span>
+        </span>
+      </div>
+      <div class="clockSecondaryWrap">
+        <span class="clockLocalTag" id="clockLocalLabel">Local</span>
+        <span class="clockUtcTag">UTC</span>
+        <span class="clockSecondary" id="clockUtcTime">--:--</span>
+      </div>
+    </div>
 
     <div class="ctl">
       <label>Dropzone</label>
@@ -527,7 +680,8 @@ th, td{
     <button id="refreshBtn" title="Refresh live data">Refresh</button>
     <button id="limitsBtn" title="Edit jump limits for the active profile">Limits</button>
 <div class="spacer"></div>
-    <div class="small" id="buildStamp" style="margin-right:12px;">Build —</div><div class="small" id="statusText">—</div>
+    <div class="topbarStatus"><div class="small" id="buildStamp">Build —</div><div class="small" id="statusText" aria-hidden="true">—</div></div>
+    <button id="exitBtn" class="topbarExit exitBtn" title="Exit dashboard">Exit</button>
   </div>
 
   <div class="wrap">
@@ -543,23 +697,18 @@ th, td{
 </div>
 </div>
       </div>
-<div class="panel clock" id="clockPanel" aria-label="Local time">
-    <div class="clockFace">
-      <div class="clockMain">
-        <div class="clockLocalTime" id="clockLocalTime">--:--</div>
-        <div class="clockLocalLabel" id="clockLocalLabel">Local</div>
-      </div>
-      <div class="clockSide">
-        <div class="clockDow" id="clockLocalDow">---</div>
-        <div class="clockDate" id="clockLocalDate">--/--</div>
-        <div class="clockUtcWrap">
-          <div class="clockUtcLabel">UTC</div>
-          <div class="clockUtcTime" id="clockUtcTime">--:--</div>
+      <div class="panel decisionBreakdownPanel">
+        <h2>Decision Breakdown</h2>
+        <div class="decisionBreakdown" id="decisionBreakdown">
+          <div class="breakRow"><div class="breakLabel">Wind</div><div class="breakState info" id="breakWindState">—</div><div class="breakDetail" id="breakWindDetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Gust</div><div class="breakState info" id="breakGustState">—</div><div class="breakDetail" id="breakGustDetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Temp</div><div class="breakState info" id="breakTempState">—</div><div class="breakDetail" id="breakTempDetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Visibility</div><div class="breakState info" id="breakVisibilityState">—</div><div class="breakDetail" id="breakVisibilityDetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Clouds</div><div class="breakState info" id="breakCloudsState">—</div><div class="breakDetail" id="breakCloudsDetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Density Alt</div><div class="breakState info" id="breakDAState">—</div><div class="breakDetail" id="breakDADetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Aloft</div><div class="breakState info" id="breakAloftState">—</div><div class="breakDetail" id="breakAloftDetail">—</div></div>
         </div>
       </div>
-    </div>
-  </div>
-
     </div>
 <div class="panel metar">
       <h2>Surface (METAR)</h2>
@@ -575,6 +724,8 @@ th, td{
               <div class="kv"><div class="k">Gust (kt)</div><div class="v" id="metarGust">—</div></div>
               <div class="kv"><div class="k">Temp (°F/°C)</div><div class="v" id="metarTemp">—</div></div>
               <div class="kv"><div class="k">Alt (inHg)</div><div class="v" id="metarAltim">—</div></div>
+              <div class="kv"><div class="k">Visibility (sm)</div><div class="v" id="metarVisibility">—</div></div>
+              <div class="kv"><div class="k">Clouds / Ceiling</div><div class="v" id="metarClouds">—</div></div>
               <div class="kv"><div class="k">Field Elev</div><div class="v" id="fieldElev">—</div></div>
               <div class="kv"><div class="k">Pressure Alt</div><div class="v" id="pressureAlt">—</div></div>
               <div class="kv"><div class="k">Density Alt</div><div class="v" id="densityAlt">—</div></div>
@@ -603,9 +754,7 @@ th, td{
     </div>
     </div>
 <div class="rowBottom" id="rowBottom">
-      <div class="leftStack">
-  
-  <div class="panel aloft">
+      <div class="panel aloft">
       <h2>Winds Aloft (0–15k ft)</h2>
       <div class="scroll" style="flex:1; min-height:0;">
         <div class="badge" id="aloftHealth">—</div>
@@ -616,7 +765,6 @@ th, td{
         </table>
       </div>
     </div>
-</div>
 
 <div class="panel windy">
       <h2>Windy (surface wind)</h2>
@@ -648,6 +796,8 @@ th, td{
           <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
         <div class="kv"><div class="k">Max shear ≤14k (kt)</div><div class="v"><input id="lim_shear" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max dir change (deg)</div><div class="v"><input id="lim_dir" type="number" min="0" step="1" style="width:110px"></div></div>
+        <div class="kv"><div class="k">Planned exit alt (MSL ft)</div><div class="v"><input id="lim_exit_alt" type="number" min="0" step="100" style="width:110px" placeholder="13500"></div></div>
+        <div class="kv"><div class="k">Deployment alt (AGL ft)</div><div class="v"><input id="lim_deploy_alt" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
       </div>
 
       <div class="row" style="margin-top:12px; justify-content:space-between;">
@@ -879,84 +1029,199 @@ th, td{
   function computeDecision(snapshot, profile) {
     const reasons = [];
     const limits = (snapshot && snapshot.limits) ? snapshot.limits : ((profile && profile.limits) ? profile.limits : {});
-
     const metar = snapshot && snapshot.metar ? snapshot.metar : null;
     const hasMetar = !!(metar && metar.ok);
-
     const surface = canonicalSurface(snapshot);
+    const aloftObj = (snapshot && snapshot.aloft) ? snapshot.aloft : null;
+    const aloftLevels = (aloftObj && aloftObj.ok && Array.isArray(aloftObj.levels)) ? aloftObj.levels : [];
 
-    // Ground wind & gust (knots)
     const windKt = hasMetar ? surface.wind_kt : null;
     const gustKt = hasMetar ? surface.gust_kt : null;
-
-    // Temperature (F)
     const tempF = hasMetar ? surface.temp_f : null;
+    const visSm = hasMetar && Number.isFinite(Number(metar.visibility_sm)) ? Number(metar.visibility_sm) : null;
 
-    if (!hasMetar) reasons.push("missing METAR");
+    const cloudLayers = hasMetar && Array.isArray(metar.cloud_layers) ? metar.cloud_layers : [];
+    const cloudSummary = hasMetar
+      ? ((typeof metar.cloud_summary === "string" && metar.cloud_summary.trim())
+          ? metar.cloud_summary.trim()
+          : (cloudLayers.length
+              ? cloudLayers.map(x => [x.cover, x.base_ft_agl != null ? `${x.base_ft_agl} ft` : null].filter(Boolean).join(" ")).join(", ")
+              : null))
+      : null;
 
-    // Limits (ONLY these three)
-    // NOTE: limits come from snapshot.limits (server-side resolved: active profile + overrides).
-    const hasLimits =
-      limits && (Object.keys(limits).length > 0) &&
-      (Number.isFinite(limits.max_surface_wind_kt) || Number.isFinite(limits.max_gust_kt) || Number.isFinite(limits.min_temp_f) || Number.isFinite(limits.max_temp_f));
+    const fieldElev = Number.isFinite(Number((snapshot && snapshot.profile && snapshot.profile.field_elevation_ft)))
+      ? Number(snapshot.profile.field_elevation_ft)
+      : 0;
+    const altim = hasMetar && Number.isFinite(Number(metar.altim_in_hg)) ? Number(metar.altim_in_hg) : null;
+    const tempC = hasMetar && Number.isFinite(Number(metar.temp_c)) ? Number(metar.temp_c) : null;
+    const pressureAlt = (altim != null)
+      ? Math.round(fieldElev + ((29.92 - altim) * 1000))
+      : null;
+    const isaTempC = (pressureAlt != null) ? (15 - ((pressureAlt / 1000) * 1.98)) : null;
+    const densityAlt = (pressureAlt != null && tempC != null)
+      ? Math.round(pressureAlt + (120 * (tempC - isaTempC)))
+      : null;
 
-    // If limits are missing entirely, be conservative and explain why.
-    if (!hasLimits) reasons.push("missing limits");
+    const numLimit = (key) => Number.isFinite(Number(limits && limits[key])) ? Number(limits[key]) : null;
+    const maxSurface = numLimit('max_surface_wind_kt');
+    const spreadLimit = numLimit('max_gust_spread_kt');
+    const absoluteGustLimit = numLimit('max_gust_kt');
+    const aloftLimit = numLimit('max_aloft_14k_kt');
+    const shearLimit = numLimit('max_shear_14k_kt');
+    const dirLimit = numLimit('max_dir_change_deg');
+    const minTempF = numLimit('min_temp_f');
+    const maxTempF = numLimit('max_temp_f');
+    const exitAlt = numLimit('planned_exit_altitude_msl_ft') ?? 13500;
+    const deploymentAltAgl = numLimit('deployment_altitude_agl_ft') ?? 3000;
+    const regulatoryMinVisibilitySm = exitAlt >= 10000 ? 5 : 3;
+    const minVisibilitySm = numLimit('min_visibility_sm') ?? regulatoryMinVisibilitySm;
+    const requiredBelowCloudFt = exitAlt >= 10000 ? 1000 : 500;
+    const minCeilingLimit = numLimit('min_ceiling_ft_agl') ?? (deploymentAltAgl + requiredBelowCloudFt);
+    const maxDensityAlt = numLimit('max_density_altitude_ft') ?? 6000;
 
-    const maxSurface = Number.isFinite(limits.max_surface_wind_kt) ? limits.max_surface_wind_kt : (hasLimits ? Infinity : 0);
-    const maxGust = Number.isFinite(limits.max_gust_kt) ? limits.max_gust_kt : (Number.isFinite(limits.max_surface_wind_kt) ? limits.max_surface_wind_kt : (hasLimits ? Infinity : 0)); // fallback
-    const minTempF = Number.isFinite(limits.min_temp_f) ? limits.min_temp_f : null;
-    const maxTempF = Number.isFinite(limits.max_temp_f) ? limits.max_temp_f : null;
+    const hasLimits = !!limits && (Object.keys(limits).length > 0);
+    if (!hasMetar) reasons.push('missing METAR');
+    if (!hasLimits) reasons.push('missing limits');
 
-    const surface_ok = hasMetar && (windKt != null) && (windKt <= maxSurface);
-    if (hasMetar && windKt == null) reasons.push("missing wind");
-    if (hasMetar && windKt != null && !surface_ok) reasons.push("surface wind");
+    const spreadKt = (windKt != null && gustKt != null)
+      ? Math.max(0, Math.round((gustKt - windKt) * 10) / 10)
+      : null;
 
-    // Gust semantics: gust may be 0 when "not reported"; that's valid.
-    // Two possible limit styles are supported:
-    //   - max_gust_kt (absolute gust cap)
-    //   - max_gust_spread_kt (gust spread cap, i.e., gust - steady wind)
-    const hasWindForSpread = (windKt != null);
-    const effectiveGustKt = gustKt; // may be 0
-    const spreadLimit = Number.isFinite(limits.max_gust_spread_kt) ? limits.max_gust_spread_kt : null;
-    const absoluteGustLimit = Number.isFinite(limits.max_gust_kt)
-      ? limits.max_gust_kt
-      : (Number.isFinite(limits.max_surface_wind_kt) ? limits.max_surface_wind_kt : null);
+    const surface_ok = hasMetar && (windKt != null) && (maxSurface == null || windKt <= maxSurface);
+    if (hasMetar && windKt == null) reasons.push('missing wind');
+    else if (hasMetar && !surface_ok) reasons.push('surface wind');
 
-    const spreadKtNow =
-      (hasMetar && hasWindForSpread && effectiveGustKt != null)
-        ? Math.max(0, Math.round((effectiveGustKt - windKt) * 10) / 10)
-        : null;
+    let gust_ok = hasMetar && (gustKt != null);
+    if (spreadLimit != null) gust_ok = gust_ok && (spreadKt != null) && (spreadKt <= spreadLimit);
+    if (absoluteGustLimit != null) gust_ok = gust_ok && (gustKt != null) && (gustKt <= absoluteGustLimit);
+    if (hasMetar && gustKt == null) reasons.push('missing gust');
+    else if (hasMetar && !gust_ok) reasons.push('gust');
 
-    // If a spread limit exists, enforce it.
-    let gust_ok = hasMetar && (effectiveGustKt != null);
-    if (spreadLimit != null) {
-      gust_ok = gust_ok && (spreadKtNow != null) && (spreadKtNow <= spreadLimit);
-    }
-    // If an absolute gust limit exists, enforce it too.
-    if (absoluteGustLimit != null) {
-      gust_ok = gust_ok && (effectiveGustKt != null) && (effectiveGustKt <= absoluteGustLimit);
-    }
-
-    if (hasMetar && effectiveGustKt == null) reasons.push("missing gust");
-    if (hasMetar && effectiveGustKt != null && !gust_ok) reasons.push("gust");
-
-    let temp_ok = hasMetar && (tempF != null);
-    if (hasMetar && tempF == null) reasons.push("missing temp");
-
-    if (hasMetar && tempF != null) {
-      if (minTempF != null && tempF < minTempF) {
-        temp_ok = false;
-        reasons.push("temperature (low)");
+    let temp_ok = true;
+    if (minTempF != null || maxTempF != null) {
+      temp_ok = hasMetar && (tempF != null);
+      if (hasMetar && tempF == null) reasons.push('missing temp');
+      if (hasMetar && tempF != null) {
+        if (minTempF != null && tempF < minTempF) {
+          temp_ok = false;
+          reasons.push('temperature (low)');
+        }
+        if (maxTempF != null && tempF > maxTempF) {
+          temp_ok = false;
+          reasons.push('temperature (high)');
+        }
       }
-      if (maxTempF != null && tempF > maxTempF) {
-        temp_ok = false;
-        reasons.push("temperature (high)");
+    }
+
+    const visibility_ok = hasMetar && (visSm != null) && (minVisibilitySm == null || visSm >= minVisibilitySm);
+    if (hasMetar && visSm == null) reasons.push('missing visibility');
+    else if (hasMetar && !visibility_ok) reasons.push('visibility');
+
+    const layeredBases = cloudLayers
+      .map(x => Number(x && x.base_ft_agl))
+      .filter(v => Number.isFinite(v));
+    const lowestCloudBase = layeredBases.length ? Math.min(...layeredBases) : null;
+    const ceilingFtAgl = Number.isFinite(Number(metar.ceiling_ft_agl))
+      ? Number(metar.ceiling_ft_agl)
+      : (cloudLayers
+          .filter(x => ['BKN','OVC','VV'].includes(String(x && x.cover || '').toUpperCase()) && Number.isFinite(Number(x.base_ft_agl)))
+          .map(x => Number(x.base_ft_agl))
+          .sort((a,b) => a-b)[0] ?? null);
+    const effectiveCloudFloor = ceilingFtAgl != null ? ceilingFtAgl : lowestCloudBase;
+    const clouds_ok = hasMetar && (effectiveCloudFloor != null ? effectiveCloudFloor >= minCeilingLimit : !!cloudSummary);
+    if (hasMetar && !cloudSummary && effectiveCloudFloor == null) reasons.push('missing clouds');
+    else if (hasMetar && !clouds_ok) reasons.push('clouds');
+
+    const da_ok = hasMetar && (densityAlt != null) && (maxDensityAlt == null || densityAlt <= maxDensityAlt);
+    if (hasMetar && densityAlt == null) reasons.push('missing density altitude');
+    else if (hasMetar && !da_ok) reasons.push('density altitude');
+
+    function angleDiff(a, b) {
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+      let d = Math.abs(a - b) % 360;
+      return d > 180 ? 360 - d : d;
+    }
+
+    let nearestAloft = null;
+    let bestAbs = null;
+    for (const lvl of aloftLevels) {
+      const ft = Number(lvl.level_ft);
+      if (!Number.isFinite(ft)) continue;
+      const diff = Math.abs(ft - exitAlt);
+      if (bestAbs == null || diff < bestAbs) {
+        bestAbs = diff;
+        nearestAloft = lvl;
       }
     }
 
-    const go = hasMetar && surface_ok && gust_ok && temp_ok && (!reasons.includes("missing limits"));
+    const aloftSpeed = nearestAloft && Number.isFinite(Number(nearestAloft.speed_kt)) ? Number(nearestAloft.speed_kt) : null;
+    const aloftDir = nearestAloft && Number.isFinite(Number(nearestAloft.dir_deg)) ? Number(nearestAloft.dir_deg) : null;
 
+    let maxShearObserved = null;
+    let maxDirObserved = null;
+    const shearLevels = aloftLevels
+      .filter(l => Number.isFinite(Number(l.level_ft)) && Number(l.level_ft) <= 14000)
+      .sort((a, b) => Number(a.level_ft) - Number(b.level_ft));
+    for (let i = 1; i < shearLevels.length; i++) {
+      const prev = shearLevels[i - 1];
+      const curr = shearLevels[i];
+      const s0 = Number(prev.speed_kt), s1 = Number(curr.speed_kt);
+      if (Number.isFinite(s0) && Number.isFinite(s1)) {
+        const shear = Math.abs(s1 - s0);
+        if (maxShearObserved == null || shear > maxShearObserved) maxShearObserved = shear;
+      }
+      const d0 = Number(prev.dir_deg), d1 = Number(curr.dir_deg);
+      const dd = angleDiff(d0, d1);
+      if (dd != null && (maxDirObserved == null || dd > maxDirObserved)) maxDirObserved = dd;
+    }
+
+    let aloft_ok = aloftLevels.length > 0 && aloftSpeed != null;
+    if (aloftLimit != null) aloft_ok = aloft_ok && (aloftSpeed != null) && (aloftSpeed <= aloftLimit);
+    if (shearLimit != null) aloft_ok = aloft_ok && (maxShearObserved != null) && (maxShearObserved <= shearLimit);
+    if (dirLimit != null) aloft_ok = aloft_ok && (maxDirObserved != null) && (maxDirObserved <= dirLimit);
+    if (!aloftLevels.length || aloftSpeed == null) reasons.push('missing aloft');
+    else {
+      if (aloftLimit != null && !(aloftSpeed <= aloftLimit)) reasons.push('aloft');
+      if (shearLimit != null && !(maxShearObserved != null && maxShearObserved <= shearLimit)) reasons.push('shear');
+      if (dirLimit != null && !(maxDirObserved != null && maxDirObserved <= dirLimit)) reasons.push('direction change');
+    }
+
+    const components = {
+      wind: {
+        status: surface_ok ? 'good' : 'no_go',
+        detail: windKt == null ? 'Unavailable' : `${Math.round(windKt)} kt${maxSurface != null ? ` / max ${Math.round(maxSurface)}` : ''}`,
+      },
+      gust: {
+        status: gust_ok ? 'good' : 'no_go',
+        detail: gustKt == null ? 'Unavailable' : `${Math.round(gustKt)} kt${spreadKt != null ? ` / +${Math.round(spreadKt)}` : ''}${absoluteGustLimit != null ? ` / max ${Math.round(absoluteGustLimit)}` : ''}`,
+      },
+      temp: {
+        status: temp_ok ? 'good' : 'no_go',
+        detail: tempF == null ? 'Unavailable' : `${Math.round(tempF)}°F${(minTempF != null || maxTempF != null) ? ` / limit ${minTempF != null ? minTempF : '—'}–${maxTempF != null ? maxTempF : '—'}` : ''}`,
+      },
+      visibility: {
+        status: visibility_ok ? 'good' : 'no_go',
+        detail: visSm == null ? 'Unavailable' : `${Number.isInteger(visSm) ? Math.round(visSm) : visSm.toFixed(1)} sm / min ${minVisibilitySm}`,
+      },
+      clouds: {
+        status: clouds_ok ? 'good' : 'no_go',
+        detail: (cloudSummary || 'Unavailable') + (effectiveCloudFloor != null ? ` / min ${Math.round(minCeilingLimit)} ft` : ''),
+      },
+      density_altitude: {
+        status: da_ok ? 'good' : 'no_go',
+        detail: densityAlt == null ? 'Unavailable' : `${Math.round(densityAlt)} ft / max ${Math.round(maxDensityAlt)}`,
+      },
+      aloft: {
+        status: aloft_ok ? 'good' : 'no_go',
+        detail: aloftSpeed == null ? 'Unavailable' : `${Math.round(aloftSpeed)} kt${aloftDir != null ? ` @ ${Math.round(aloftDir)}°` : ''} near ${nearestAloft && Number.isFinite(Number(nearestAloft.level_ft)) ? Math.round(Number(nearestAloft.level_ft)) : exitAlt} ft`,
+      },
+    };
+
+    const failFlags = [surface_ok, gust_ok, temp_ok, visibility_ok, clouds_ok, da_ok, aloft_ok, hasLimits, hasMetar];
+    const go = failFlags.every(Boolean);
+    const label = go ? 'GO' : 'NO GO';
+    const status = go ? 'good' : 'no_go';
+    const uniqReasons = [...new Set(reasons)];
     const tempRangeStr =
       (minTempF != null && maxTempF != null)
         ? `${minTempF}–${maxTempF}`
@@ -964,109 +1229,98 @@ th, td{
           ? `≥${minTempF}`
           : (maxTempF != null)
             ? `≤${maxTempF}`
-            : "—";
-
-    const spreadKt =
-      (windKt != null && gustKt != null)
-        ? Math.max(0, Math.round((gustKt - windKt) * 10) / 10)
-        : null;
+            : '—';
 
     return {
       go,
-      reasons,
+      label,
+      status,
+      reasons: uniqReasons,
+      components,
+      surface_ok,
+      gust_ok,
+      visibility_ok,
+      clouds_ok,
+      da_ok,
+      aloft_ok,
+      temp_ok,
       surfaceWindKt: windKt,
       gustKt: gustKt,
       tempF: tempF,
       tempRangeStr,
       spreadKt,
+      densityAlt,
+      pressureAlt,
       surfaceDirFromDeg: hasMetar ? surface.dir_from_deg : null,
+      aloftSpeedKt: aloftSpeed,
+      aloftDirDeg: aloftDir,
+      aloftLevelFt: nearestAloft && Number.isFinite(Number(nearestAloft.level_ft)) ? Number(nearestAloft.level_ft) : exitAlt,
+      maxShearKt: maxShearObserved,
+      maxDirChangeDeg: maxDirObserved,
+      minVisibilitySm,
+      minCeilingFtAgl: minCeilingLimit,
+      maxDensityAlt,
+      ceilingFtAgl,
+      lowestCloudBase,
     };
   }
 
 
+  function setBreakRow(prefix, state, detail){
+    const stateEl = $(prefix + "State");
+    const detailEl = $(prefix + "Detail");
+    if (stateEl){
+      const raw = String(state || "—").trim();
+      const norm = raw.toLowerCase();
+      stateEl.textContent = raw.toUpperCase();
+      stateEl.className = "breakState " + (
+        (norm === "good" || norm === "ok") ? "good" :
+        (norm === "caution" || norm === "warn") ? "caution" :
+        (norm === "elevated" || norm === "risk") ? "elevated" :
+        (norm === "bad" || norm === "fail" || norm === "no-go" || norm === "no go" || norm === "no_go" || norm === "high") ? "bad" :
+        "info"
+      );
+    }
+    if (detailEl) detailEl.textContent = detail || "—";
+  }
+
+  function setDecisionBreakdownUI(snapshot, res){
+    if (!res || !res.components) return;
+    setBreakRow('breakWind', res.components.wind.status, res.components.wind.detail);
+    setBreakRow('breakGust', res.components.gust.status, res.components.gust.detail);
+    setBreakRow('breakTemp', res.components.temp.status, res.components.temp.detail);
+    setBreakRow('breakVisibility', res.components.visibility.status, res.components.visibility.detail);
+    setBreakRow('breakClouds', res.components.clouds.status, res.components.clouds.detail);
+    setBreakRow('breakDA', res.components.density_altitude.status, res.components.density_altitude.detail);
+    setBreakRow('breakAloft', res.components.aloft.status, res.components.aloft.detail);
+  }
+
   function setDecisionUI(snapshot){
-    const res = computeDecision(snapshot);
+    const res = (snapshot && snapshot.decision && typeof snapshot.decision === "object" && typeof snapshot.decision.go === "boolean")
+      ? snapshot.decision
+      : computeDecision(snapshot);
     const card = $("decisionCard");
     const goText = $("goText");
     const reasonBadge = $("reasonBadge");
     const metaBadge = $("metaBadge");
 
-    goText.textContent = res.go ? "GO" : "NO-GO";
-    goText.className = "big " + (res.go ? "good" : "bad");
+    const dzName = (snapshot.profile && (snapshot.profile.label || snapshot.profile.name))
+      ? (snapshot.profile.label || snapshot.profile.name)
+      : (snapshot.active_code || "—");
+    metaBadge.innerHTML = "<strong>DZ:</strong> " + dzName;
 
-    const rz = res.reasons.length ? res.reasons.join(", ") : "—";
-    reasonBadge.innerHTML = "<strong>Reasons:</strong> " + rz;
+    goText.textContent = res.label;
+    goText.className = "big " + (res.status === 'good' ? 'good' : (res.status === 'caution' ? 'warn' : 'bad'));
 
-    const dzName = (snapshot.profile && snapshot.profile.name) ? snapshot.profile.name : (snapshot.active_code || "—");
-        metaBadge.innerHTML = "<strong>DZ:</strong> " + dzName;
-    // Data completeness chips (prefer server-provided data_status; fall back to what we can infer)
-    const ds = (snapshot && (snapshot.data_status || snapshot.dataStatus)) ? (snapshot.data_status || snapshot.dataStatus) : {};
-    function setChip(id, label, state, extra){
-      const el = $(id);
-      if (!el) return;
-      const st = (state || "—").toString().toUpperCase();
-      el.className = "chip " + (
-        st === "OK" ? "ok" :
-        st === "STALE" ? "stale" :
-        st === "BLOCKED" ? "blocked" :
-        st === "FAIL" ? "fail" :
-        ""
-      );
-      el.textContent = label + ": " + st + (extra ? (" " + extra) : "");
-    }
+    const rz = res.reasons.length
+      ? res.reasons.join(' · ')
+      : (res.status === 'good' ? 'Conditions within configured limits' : 'One or more conditions exceed configured limits');
+    reasonBadge.innerHTML = '<strong>Reasons:</strong> ' + rz;
+    card.style.borderColor = res.status === 'good'
+      ? 'rgba(46,204,113,.35)'
+      : (res.status === 'caution' ? 'rgba(245,197,66,.45)' : 'rgba(255,77,77,.35)');
 
-    // METAR
-    let metarState = ds.metar && ds.metar.state ? ds.metar.state : null;
-    let metarExtra = "";
-    if (!metarState){
-      const m = snapshot && snapshot.metar ? snapshot.metar : null;
-      if (m && m.ok){
-        // consider stale if older than 120 minutes (conservative)
-        const ageMin = (typeof m.age_min === "number") ? m.age_min : null;
-        if (ageMin != null && ageMin > 120) metarState = "STALE"; else metarState = "OK";
-        if (ageMin != null) metarExtra = `(${Math.round(ageMin)}m)`;
-      } else {
-        metarState = "FAIL";
-      }
-    } else {
-      if (ds.metar && typeof ds.metar.age_min === "number") metarExtra = `(${Math.round(ds.metar.age_min)}m)`;
-    }
-    setChip("chip_metar", "METAR", metarState, metarExtra);
-
-    // Aloft
-    let aloftState = (ds.aloft && ds.aloft.state) ? ds.aloft.state : null;
-    if (!aloftState){
-      const a = snapshot && snapshot.aloft ? snapshot.aloft : null;
-      aloftState = (a && a.ok) ? ((a.stale) ? "STALE" : "OK") : "FAIL";
-    }
-    setChip("chip_aloft", "Aloft", aloftState, "");
-
-    // Radar
-    let radarState = (ds.radar && ds.radar.state) ? ds.radar.state : null;
-    if (!radarState){
-      const r = snapshot && snapshot.radar ? snapshot.radar : null;
-      const ok = r && r.check ? !!r.check.ok : (!!(r && r.image_url));
-      radarState = ok ? "OK" : "FAIL";
-    }
-    setChip("chip_radar", "Radar", radarState, "");
-
-    // Windy
-    let windyState = (ds.windy && ds.windy.state) ? ds.windy.state : null;
-    if (!windyState){
-      const w = snapshot && snapshot.windy ? snapshot.windy : null;
-      windyState = (w && w.iframe_src) ? "OK" : "FAIL";
-    }
-    setChip("chip_windy", "Windy", windyState, "");
-
-
-    // quick metrics
-    const ms = $("metric_surface"); if (ms) ms.textContent = (res.surfaceWindKt ?? "—");
-    const mg = $("metric_gust"); if (mg) mg.textContent = (res.gustKt ?? "—");
-    const ma = $("metric_aloft"); if (ma) ma.textContent = (res.tempF ?? "—");
-    const mh = $("metric_shear"); if (mh) mh.textContent = (res.tempRangeStr ?? "—");
-
-    // subtle card background accent
-    card.style.borderColor = res.go ? "rgba(46,204,113,.35)" : "rgba(255,77,77,.35)";
+    setDecisionBreakdownUI(snapshot, res);
   }
 
   function setSurfaceUI(snapshot){
@@ -1104,8 +1358,10 @@ th, td{
     setText("metarStation", station);
     setText("metarWind", windKt==null ? "—" : Math.round(windKt));
     setText("metarGust", gustKt==null ? "—" : Math.round(gustKt));
-    setText("metarTemp", (ok && (metar.temp_f!=null || metar.temp_c!=null)) ? (metar.temp_f!=null ? metar.temp_f : Math.round((metar.temp_c*9/5)+32)) : "—");
+    setText("metarTemp", (ok && (metar.temp_f!=null || metar.temp_c!=null)) ? `${metar.temp_f!=null ? metar.temp_f : Math.round((metar.temp_c*9/5)+32)}°F / ${metar.temp_c!=null ? Math.round(metar.temp_c) : Math.round(((metar.temp_f-32)*5)/9)}°C` : "—");
     setText("metarAltim", (ok && metar.altim_in_hg!=null) ? metar.altim_in_hg : "—");
+    setText("metarVisibility", (ok && metar.visibility_sm!=null) ? `${Number.isInteger(Number(metar.visibility_sm)) ? Math.round(Number(metar.visibility_sm)) : Number(metar.visibility_sm).toFixed(1)} sm` : "—");
+    setText("metarClouds", (ok && metar.cloud_summary) ? metar.cloud_summary : ((ok && metar.ceiling_ft_agl!=null) ? `${metar.ceiling_ft_agl} ft` : "—"));
 
     // Arrow + direction text
     const arrow = $("landingArrowImg");
@@ -1217,11 +1473,18 @@ th, td{
   function setLimitsUI(snapshot){
     const lim = snapshot.limits || {};
     $("lim_surface").value = lim.max_surface_wind_kt ?? "";
+    $("lim_gust").value = lim.max_gust_kt ?? "";
     $("lim_gust_spread").value = lim.max_gust_spread_kt ?? "";
+    $("lim_visibility").value = lim.min_visibility_sm ?? "";
     $("lim_temp_min").value = lim.min_temp_f ?? "";
     $("lim_temp").value = lim.max_temp_f ?? "";
+    $("lim_ceiling").value = lim.min_ceiling_ft_agl ?? "";
+    $("lim_density_alt").value = lim.max_density_altitude_ft ?? "";
+    $("lim_aloft").value = lim.max_aloft_14k_kt ?? "";
     $("lim_shear").value = lim.max_shear_14k_kt ?? "";
     $("lim_dir").value = lim.max_dir_change_deg ?? "";
+    $("lim_exit_alt").value = lim.planned_exit_altitude_msl_ft ?? "";
+    $("lim_deploy_alt").value = lim.deployment_altitude_agl_ft ?? "";
   }
 
   async function apiGet(path){
@@ -1293,34 +1556,61 @@ th, td{
     const st = await apiGet("/status.json");
     $("statusText").textContent = st.ok ? `Server OK · active: ${st.active_code || "—"}` : "Server not ready";
     if (st && st.active_code) CURRENT_DZ_CODE = st.active_code;
+    let buildLabel = null;
     try {
       const build = await fetch(API + "/build_info.json", {cache:"no-store"});
       if (build.ok){
         const info = await build.json();
-        $("buildStamp").textContent = `Build v${info.version || "—"}`;
+        if (info && info.version) buildLabel = `Build v${info.version}`;
       }
     } catch {}
+    if (!buildLabel && st && st.server_version) buildLabel = `Build ${st.server_version}`;
+    $("buildStamp").textContent = buildLabel || "Build —";
     return st;
   }
 
   function setWeatherRiskUI(snap){
     const wx = snap.weather || {};
-    const perf = wx.performance || {};
+    const metar = snap.metar || {};
+    const prof = snap.profile || {};
     const cmp = wx.components || {};
-    const reasons = (wx.reasons || []).join(" · ");
-    const mapChip = (id, label, status) => {
-      const el = $(id); if (!el) return;
-      el.textContent = `${label} ${status ? status.toUpperCase().replace("NO_GO","NO GO") : "—"}`;
-      el.className = "chip " + (status === "good" ? "ok" : (status === "caution" ? "stale" : (status === "no_go" ? "fail" : "")));
-    };
-    $("fieldElev").textContent = perf.field_elevation_ft != null ? `${perf.field_elevation_ft} ft` : "—";
-    $("pressureAlt").textContent = perf.pressure_altitude_ft != null ? `${perf.pressure_altitude_ft} ft` : "—";
-    $("densityAlt").textContent = perf.density_altitude_ft != null ? `${perf.density_altitude_ft} ft` : "—";
-    mapChip("chipWind", "Wind", (cmp.wind || {}).status);
-    mapChip("chipVisibility", "Visibility", (cmp.visibility || {}).status);
-    mapChip("chipClouds", "Clouds", (cmp.clouds || {}).status);
-    mapChip("chipDA", "Density Alt", (cmp.density_altitude || {}).status);
-    $("reasonBadge").innerHTML = "<strong>Reasons:</strong> " + (reasons || "Conditions within configured limits");
+    const limits = snap.limits || {};
+
+    const perf = (snap && snap.decision && snap.decision.performance && typeof snap.decision.performance === "object")
+      ? snap.decision.performance
+      : (wx.performance || {});
+
+    const fieldElev = Number.isFinite(Number(perf.field_elevation_ft))
+      ? Number(perf.field_elevation_ft)
+      : (Number.isFinite(Number(prof.field_elevation_ft)) ? Number(prof.field_elevation_ft) : null);
+    const altim = Number.isFinite(Number(metar.altim_in_hg)) ? Number(metar.altim_in_hg) : null;
+    const tempC = Number.isFinite(Number(metar.temp_c)) ? Number(metar.temp_c) : null;
+    const pressureAlt = Number.isFinite(Number(perf.pressure_altitude_ft))
+      ? Math.round(Number(perf.pressure_altitude_ft))
+      : ((fieldElev != null && altim != null) ? Math.round(fieldElev + ((29.92 - altim) * 1000)) : null);
+    const isaTemp = (pressureAlt != null) ? (15 - ((pressureAlt / 1000) * 1.98)) : null;
+    const densityAlt = Number.isFinite(Number(perf.density_altitude_ft))
+      ? Math.round(Number(perf.density_altitude_ft))
+      : ((pressureAlt != null && tempC != null) ? Math.round(pressureAlt + (120 * (tempC - isaTemp))) : null);
+
+    const vis = Number.isFinite(Number(metar.visibility_sm)) ? Number(metar.visibility_sm) : null;
+    const cloudSummary = (typeof metar.cloud_summary === "string" && metar.cloud_summary.trim())
+      ? metar.cloud_summary.trim()
+      : (Array.isArray(metar.cloud_layers) && metar.cloud_layers.length
+          ? metar.cloud_layers.map(x => [x.cover, x.base_ft_agl != null ? `${x.base_ft_agl} ft` : null].filter(Boolean).join(" ")).join(", ")
+          : null);
+
+    const setText = (id, val) => { const e = $(id); if (e) e.textContent = (val===null||val===undefined||val==="") ? "—" : String(val); };
+    setText("fieldElev", fieldElev != null ? `${fieldElev} ft` : "—");
+    setText("pressureAlt", pressureAlt != null ? `${pressureAlt} ft` : "—");
+    setText("densityAlt", densityAlt != null ? `${densityAlt} ft` : "—");
+    const densityAltEl = $("densityAlt");
+    if (densityAltEl){
+      densityAltEl.style.color = densityAlt == null ? "" : (densityAlt <= 2000 ? "#8ff7da" : densityAlt <= 4000 ? "#f5c542" : densityAlt <= 6000 ? "#ff9f43" : "#ff7b7b");
+    }
+    setText("metarVisibility", vis != null ? `${Number.isInteger(vis) ? vis : vis.toFixed(1)} sm` : "—");
+    setText("metarClouds", cloudSummary || (metar.ceiling_ft_agl != null ? `${metar.ceiling_ft_agl} ft` : "—"));
+
   }
 
   async function refreshSnapshot(){
@@ -1356,6 +1646,14 @@ th, td{
   // --- Events ---
   $("refreshBtn").addEventListener("click", async () => {
     await refreshSnapshot();
+  });
+
+  $("exitBtn").addEventListener("click", () => {
+    try {
+      window.location.href = "app://exit";
+    } catch {
+      try { window.close(); } catch {}
+    }
   });
 
   // Limits modal toggle (keeps main layout clean)
@@ -1414,11 +1712,18 @@ th, td{
 
     const limits = {
       max_surface_wind_kt: parseNum("lim_surface"),
+      max_gust_kt: parseNum("lim_gust"),
       max_gust_spread_kt: parseNum("lim_gust_spread"),
+      min_visibility_sm: parseNum("lim_visibility"),
       min_temp_f: parseNum("lim_temp_min"),
       max_temp_f: parseNum("lim_temp"),
+      min_ceiling_ft_agl: parseNum("lim_ceiling"),
+      max_density_altitude_ft: parseNum("lim_density_alt"),
+      max_aloft_14k_kt: parseNum("lim_aloft"),
       max_shear_14k_kt: parseNum("lim_shear"),
       max_dir_change_deg: parseNum("lim_dir"),
+      planned_exit_altitude_msl_ft: parseNum("lim_exit_alt"),
+      deployment_altitude_agl_ft: parseNum("lim_deploy_alt"),
     };
 
     // drop nulls
@@ -1470,7 +1775,8 @@ th, td{
         refreshSnapshot().catch(()=>{});
       }, 5 * 60 * 1000);
     }catch(e){
-      $("statusText").textContent = "Cannot reach server at " + API;
+      console.error("init failed", e);
+      $("statusText").textContent = "Load error: " + ((e && e.message) ? e.message : e);
       $("goText").textContent = "NO GO";
       $("goText").className = "big bad";
       $("reasonBadge").innerHTML = "<strong>Reasons:</strong> server unreachable";
@@ -1632,16 +1938,6 @@ th, td{
   }
 
 
-  const __origSetDecisionUI = setDecisionUI;
-  setDecisionUI = function(snapshot){
-    __origSetDecisionUI(snapshot);
-    const wx = snapshot.weather || {};
-    const label = wx.label || 'NO GO';
-    const status = wx.status || 'no_go';
-    $("goText").textContent = label;
-    $("goText").className = 'big ' + (status === 'good' ? 'good' : (status === 'caution' ? 'warn' : 'bad'));
-  };
-
   const __origSetSurfaceUI = setSurfaceUI;
   setSurfaceUI = function(snapshot){
     __origSetSurfaceUI(snapshot);
@@ -1650,6 +1946,25 @@ th, td{
     const tc = m.temp_c != null ? `${m.temp_c}°C` : '—';
     $("metarTemp").textContent = `${tf} / ${tc}`;
   };
+
+
+
+  // Harden init: do not treat every render/layout issue as a server outage.
+  const __origRefreshSnapshot = refreshSnapshot;
+  refreshSnapshot = async function(){
+    try {
+      return await __origRefreshSnapshot();
+    } catch (e) {
+      console.error('refreshSnapshot failed', e);
+      const st = $("statusText");
+      if (st) st.textContent = 'Render error: ' + (e && e.message ? e.message : e);
+      throw e;
+    }
+  };
+
+  window.addEventListener('error', (e) => {
+    try { console.error('window error', e.error || e.message || e); } catch (_) {}
+  });
 
 </script>
 <!-- The manifestWebview displays the Burble manifest when rotation is active.
@@ -1660,5 +1975,10 @@ th, td{
          style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"
          allowpopups
          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"
-         ></webview></body>
+         ></webview>
+<div style="display:none" aria-hidden="true">
+  <span id="metric_surface"></span><span id="metric_gust"></span><span id="metric_aloft"></span><span id="metric_shear"></span>
+</div>
+
+</body>
 </html>

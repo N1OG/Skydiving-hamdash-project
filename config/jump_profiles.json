@@ -3,11 +3,11 @@
     "name": "A-License (conservative)",
     "limits": {
       "max_surface_wind_kt": 19,
-      "max_gust_spread_kt": 20,
-      "max_aloft_14k_kt": 35,
-      "max_gust_kt": 25,
-      "planned_exit_altitude_msl_ft": 13500,
-      "deployment_altitude_agl_ft": 3500
+      "max_gust_spread_kt": 10,
+      "min_temp_f": 65,
+      "max_temp_f": 200,
+      "max_shear_14k_kt": 20,
+      "max_dir_change_deg": 120
     }
   },
   "experienced": {

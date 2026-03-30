@@ -76,16 +76,20 @@ MANUAL_OVERRIDES_PATH = CONFIG_DIR / "manual_overrides.json"
 DEFAULT_LIMITS = {
     "max_surface_wind_kt": 19,
     "max_gust_spread_kt": 9,
+    "max_gust_kt": 25,
+    "min_visibility_sm": 3,
+    "min_ceiling_ft_agl": 3500,
+    "max_density_altitude_ft": 6000,
     "max_aloft_14k_kt": 60,
     "max_shear_14k_kt": 20,
     # directional sensitivity can be added later; keep place-holder for UI compatibility
     "max_dir_change_deg": 120,
-    "max_gust_kt": 0,
-    "min_temp_f": 0,
-    "max_temp_f": 200,
+    "min_temp_f": 30,
+    "max_temp_f": 95,
     "planned_exit_altitude_msl_ft": 13500,
-    "deployment_altitude_agl_ft": 3500,
+    "deployment_altitude_agl_ft": 3000,
     }
+
 
 BUILTIN_JUMP_PROFILES = {
     "student": {
@@ -93,6 +97,9 @@ BUILTIN_JUMP_PROFILES = {
         "limits": {
             "max_surface_wind_kt": 14,
             "max_gust_kt": 18,
+            "min_visibility_sm": 3,
+            "min_ceiling_ft_agl": 3500,
+            "max_density_altitude_ft": 4000,
             "min_temp_f": 32,
             "max_temp_f": 95,
             "max_gust_spread_kt": 6,
@@ -100,7 +107,7 @@ BUILTIN_JUMP_PROFILES = {
             "max_shear_14k_kt": 12,
             "max_dir_change_deg": 90,
             "planned_exit_altitude_msl_ft": 13500,
-            "deployment_altitude_agl_ft": 4000,
+            "deployment_altitude_agl_ft": 3000,
         },
     },
     "a_license": {
@@ -108,6 +115,9 @@ BUILTIN_JUMP_PROFILES = {
         "limits": {
             "max_surface_wind_kt": 19,
             "max_gust_kt": 25,
+            "min_visibility_sm": 5,
+            "min_ceiling_ft_agl": 4000,
+            "max_density_altitude_ft": 6000,
             "min_temp_f": 30,
             "max_temp_f": 95,
             "max_gust_spread_kt": 9,
@@ -115,19 +125,25 @@ BUILTIN_JUMP_PROFILES = {
             "max_shear_14k_kt": 20,
             "max_dir_change_deg": 120,
             "planned_exit_altitude_msl_ft": 13500,
-            "deployment_altitude_agl_ft": 3500,
+            "deployment_altitude_agl_ft": 3000,
         },
     },
     "experienced": {
         "name": "Experienced (1k+)",
         "limits": {
             "max_surface_wind_kt": 25,
+            "max_gust_kt": 30,
+            "min_visibility_sm": 5,
+            "min_ceiling_ft_agl": 4000,
+            "max_density_altitude_ft": 8000,
+            "min_temp_f": 20,
+            "max_temp_f": 100,
             "max_gust_spread_kt": 12,
             "max_aloft_14k_kt": 80,
             "max_shear_14k_kt": 25,
             "max_dir_change_deg": 140,
             "planned_exit_altitude_msl_ft": 13500,
-            "deployment_altitude_agl_ft": 3500,
+            "deployment_altitude_agl_ft": 3000,
         },
     },
 }
@@ -271,11 +287,75 @@ def fetch_metar_from_aviationweather(icao: str) -> Dict[str, Any]:
         "temp_f": None,
         "dewpoint_f": None,
         "altim_in_hg": None,
+        "visibility_sm": None,
+        "cloud_layers": [],
+        "ceiling_ft_agl": None,
+        "cloud_summary": None,
         "error": None,
     }
     if not icao:
         out["error"] = "missing ICAO"
         return out
+
+    def _augment_metar_fields_from_raw(raw_text: Optional[str]) -> None:
+        raw_text = (raw_text or "").strip()
+        if not raw_text:
+            return
+        tokens = raw_text.split()
+        vis = None
+        cloud_layers = []
+        ceiling = None
+        summary = None
+        for t in tokens:
+            mm = re.fullmatch(r"(\d+)(SM)", t)
+            if mm:
+                try:
+                    vis = float(mm.group(1))
+                except Exception:
+                    pass
+                continue
+            mm = re.fullmatch(r"(\d+)\/(\d+)SM", t)
+            if mm:
+                try:
+                    vis = float(mm.group(1)) / float(mm.group(2))
+                except Exception:
+                    pass
+                continue
+            mm = re.fullmatch(r"(\d+)\s?(\d+)\/(\d+)SM", t)
+            if mm:
+                try:
+                    vis = float(mm.group(1)) + (float(mm.group(2)) / float(mm.group(3)))
+                except Exception:
+                    pass
+                continue
+            mm = re.fullmatch(r"(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?", t)
+            if mm:
+                cover = mm.group(1)
+                base_ft = int(mm.group(2)) * 100
+                cloud_layers.append({"cover": cover, "base_ft_agl": base_ft})
+                if cover in ("BKN", "OVC"):
+                    ceiling = base_ft if ceiling is None else min(ceiling, base_ft)
+                continue
+            if t == "CLR" or t == "SKC":
+                summary = "Clear"
+        if vis is not None:
+            out["visibility_sm"] = vis
+        if cloud_layers:
+            out["cloud_layers"] = cloud_layers
+        if ceiling is not None:
+            out["ceiling_ft_agl"] = ceiling
+        if summary is None:
+            if cloud_layers:
+                parts = []
+                for layer in cloud_layers:
+                    c = layer.get("cover") or ""
+                    b = layer.get("base_ft_agl")
+                    parts.append(f"{c} {b} ft" if b is not None else c)
+                summary = ", ".join(parts)
+            elif raw_text:
+                summary = "Clear"
+        if summary is not None:
+            out["cloud_summary"] = summary
 
     # ---- (1) TGFTP plain text ----
     # Format:
@@ -347,6 +427,7 @@ def fetch_metar_from_aviationweather(icao: str) -> Dict[str, Any]:
             })
             out["temp_f"] = c_to_f(out["temp_c"])
             out["dewpoint_f"] = c_to_f(out["dewpoint_c"])
+            _augment_metar_fields_from_raw(out.get("raw"))
 
             # Consider OK if we at least got a raw METAR.
             out["ok"] = True
@@ -410,6 +491,7 @@ def fetch_metar_from_aviationweather(icao: str) -> Dict[str, Any]:
             out["altim_in_hg"] = _to_float(_get_text("altim_in_hg"))
             out["temp_f"] = c_to_f(out["temp_c"])
             out["dewpoint_f"] = c_to_f(out["dewpoint_c"])
+            _augment_metar_fields_from_raw(out.get("raw"))
 
             # OK if we got an obs time and at least one numeric field.
             if out["obs_time"] and (out["wind_speed_kt"] is not None or out["temp_c"] is not None or out["altim_in_hg"] is not None):
@@ -771,25 +853,277 @@ def fetch_open_meteo_aloft(lat: float, lon: float) -> Dict[str, Any]:
     return out
 
 
+def _num(x: Any) -> Optional[float]:
+    try:
+        if x is None:
+            return None
+        return float(x)
+    except Exception:
+        return None
+
+
+def _angle_diff(a: Optional[float], b: Optional[float]) -> Optional[float]:
+    if a is None or b is None:
+        return None
+    d = abs(float(a) - float(b)) % 360.0
+    return 360.0 - d if d > 180.0 else d
+
+
+def _round_display(x: Optional[float]) -> str:
+    if x is None:
+        return "—"
+    if abs(float(x) - round(float(x))) < 0.05:
+        return str(int(round(float(x))))
+    return f"{float(x):.1f}"
+
+
+def _compute_snapshot_decision(limits: Dict[str, Any], profile: Dict[str, Any], metar: Dict[str, Any], aloft: Dict[str, Any]) -> Dict[str, Any]:
+    limits = limits or {}
+    profile = profile or {}
+    metar = metar or {}
+    aloft = aloft or {}
+
+    has_metar = bool(metar.get("ok"))
+    has_aloft = bool(aloft.get("ok")) and isinstance(aloft.get("levels"), list) and len(aloft.get("levels")) > 0
+    has_limits = bool(limits)
+    reasons: List[str] = []
+
+    def num_limit(key: str) -> Optional[float]:
+        return _num(limits.get(key))
+
+    field_elev = _num(profile.get("field_elevation_ft")) or 0.0
+    wind_kt = _num(metar.get("wind_speed_kt")) if has_metar else None
+    gust_kt = _num(metar.get("wind_gust_kt")) if has_metar else None
+    if gust_kt is None and wind_kt is not None:
+        gust_kt = 0.0
+    temp_c = _num(metar.get("temp_c")) if has_metar else None
+    temp_f = _num(metar.get("temp_f")) if has_metar else None
+    vis_sm = _num(metar.get("visibility_sm")) if has_metar else None
+    altim = _num(metar.get("altim_in_hg")) if has_metar else None
+    cloud_layers = metar.get("cloud_layers") if has_metar and isinstance(metar.get("cloud_layers"), list) else []
+    cloud_summary = (metar.get("cloud_summary") or None) if has_metar else None
+    if isinstance(cloud_summary, str):
+        cloud_summary = cloud_summary.strip() or None
+
+    pressure_alt = round(field_elev + ((29.92 - altim) * 1000.0)) if altim is not None else None
+    isa_temp_c = (15.0 - ((pressure_alt / 1000.0) * 1.98)) if pressure_alt is not None else None
+    density_alt = round(pressure_alt + (120.0 * (temp_c - isa_temp_c))) if pressure_alt is not None and temp_c is not None and isa_temp_c is not None else None
+
+    max_surface = num_limit("max_surface_wind_kt")
+    max_gust = num_limit("max_gust_kt")
+    max_gust_spread = num_limit("max_gust_spread_kt")
+    min_temp_f = num_limit("min_temp_f")
+    max_temp_f = num_limit("max_temp_f")
+    exit_alt = num_limit("planned_exit_altitude_msl_ft") or 13500.0
+    deployment_alt_agl = num_limit("deployment_altitude_agl_ft") or 3000.0
+    regulatory_min_visibility_sm = 5.0 if exit_alt >= 10000 else 3.0
+    min_visibility_sm = num_limit("min_visibility_sm") or regulatory_min_visibility_sm
+    required_below_cloud_ft = 1000.0 if exit_alt >= 10000 else 500.0
+    min_ceiling_limit = num_limit("min_ceiling_ft_agl") or (deployment_alt_agl + required_below_cloud_ft)
+    max_density_alt = num_limit("max_density_altitude_ft") or 6000.0
+    max_aloft_14k = num_limit("max_aloft_14k_kt")
+    max_shear_14k = num_limit("max_shear_14k_kt")
+    max_dir_change = num_limit("max_dir_change_deg")
+
+    spread_kt = max(0.0, gust_kt - wind_kt) if gust_kt is not None and wind_kt is not None else None
+
+    surface_ok = bool(has_metar and wind_kt is not None and (max_surface is None or wind_kt <= max_surface))
+    if not has_metar:
+        reasons.append("missing METAR")
+    elif wind_kt is None:
+        reasons.append("missing wind")
+    elif not surface_ok:
+        reasons.append("surface wind")
+
+    gust_ok = bool(has_metar and gust_kt is not None)
+    if max_gust is not None:
+        gust_ok = gust_ok and gust_kt is not None and gust_kt <= max_gust
+    if max_gust_spread is not None:
+        gust_ok = gust_ok and spread_kt is not None and spread_kt <= max_gust_spread
+    if has_metar and not gust_ok:
+        reasons.append("gust")
+
+    temp_ok = True
+    if min_temp_f is not None or max_temp_f is not None:
+        temp_ok = bool(has_metar and temp_f is not None)
+        if has_metar and temp_f is None:
+            reasons.append("missing temp")
+        elif has_metar and temp_f is not None:
+            if min_temp_f is not None and temp_f < min_temp_f:
+                temp_ok = False
+                reasons.append("temperature (low)")
+            if max_temp_f is not None and temp_f > max_temp_f:
+                temp_ok = False
+                reasons.append("temperature (high)")
+
+    visibility_ok = bool(has_metar and vis_sm is not None and (min_visibility_sm is None or vis_sm >= min_visibility_sm))
+    if has_metar and vis_sm is None:
+        reasons.append("missing visibility")
+    elif has_metar and not visibility_ok:
+        reasons.append("visibility")
+
+    ceiling_ft_agl: Optional[float] = _num(metar.get("ceiling_ft_agl"))
+    layered_bases: List[float] = []
+    for layer in cloud_layers:
+        base = _num((layer or {}).get("base_ft_agl"))
+        if base is not None:
+            layered_bases.append(base)
+        if ceiling_ft_agl is None and str((layer or {}).get("cover") or "").upper() in {"BKN", "OVC", "VV"} and base is not None:
+            ceiling_ft_agl = base if ceiling_ft_agl is None else min(ceiling_ft_agl, base)
+    lowest_cloud_base = min(layered_bases) if layered_bases else None
+    effective_cloud_floor = ceiling_ft_agl if ceiling_ft_agl is not None else lowest_cloud_base
+    clouds_ok = bool(has_metar and (effective_cloud_floor >= min_ceiling_limit if effective_cloud_floor is not None else bool(cloud_summary)))
+    if has_metar and not cloud_summary and effective_cloud_floor is None:
+        reasons.append("missing clouds")
+    elif has_metar and not clouds_ok:
+        reasons.append("clouds")
+
+    da_ok = bool(has_metar and density_alt is not None and (max_density_alt is None or density_alt <= max_density_alt))
+    if has_metar and density_alt is None:
+        reasons.append("missing density altitude")
+    elif has_metar and not da_ok:
+        reasons.append("density altitude")
+
+    aloft_levels = aloft.get("levels") if has_aloft else []
+    nearest_aloft = None
+    best_abs = None
+    for lvl in aloft_levels:
+        ft = _num((lvl or {}).get("level_ft"))
+        if ft is None:
+            continue
+        diff = abs(ft - exit_alt)
+        if best_abs is None or diff < best_abs:
+            best_abs = diff
+            nearest_aloft = lvl
+    aloft_speed = _num((nearest_aloft or {}).get("speed_kt"))
+    aloft_dir = _num((nearest_aloft or {}).get("dir_deg"))
+
+    max_shear_observed = None
+    max_dir_observed = None
+    shear_levels = sorted([lvl for lvl in aloft_levels if _num((lvl or {}).get("level_ft")) is not None and _num((lvl or {}).get("level_ft")) <= 14000], key=lambda x: _num((x or {}).get("level_ft")) or 0)
+    for i in range(1, len(shear_levels)):
+        prev = shear_levels[i - 1]
+        curr = shear_levels[i]
+        s0 = _num((prev or {}).get("speed_kt"))
+        s1 = _num((curr or {}).get("speed_kt"))
+        if s0 is not None and s1 is not None:
+            shear = abs(s1 - s0)
+            max_shear_observed = shear if max_shear_observed is None else max(max_shear_observed, shear)
+        d0 = _num((prev or {}).get("dir_deg"))
+        d1 = _num((curr or {}).get("dir_deg"))
+        dd = _angle_diff(d0, d1)
+        if dd is not None:
+            max_dir_observed = dd if max_dir_observed is None else max(max_dir_observed, dd)
+
+    aloft_ok = bool(has_aloft and aloft_speed is not None)
+    if max_aloft_14k is not None:
+        aloft_ok = aloft_ok and aloft_speed is not None and aloft_speed <= max_aloft_14k
+    if max_shear_14k is not None:
+        aloft_ok = aloft_ok and max_shear_observed is not None and max_shear_observed <= max_shear_14k
+    if max_dir_change is not None:
+        aloft_ok = aloft_ok and max_dir_observed is not None and max_dir_observed <= max_dir_change
+    if not has_aloft:
+        reasons.append("missing aloft")
+    else:
+        if max_aloft_14k is not None and not (aloft_speed is not None and aloft_speed <= max_aloft_14k):
+            reasons.append("aloft")
+        if max_shear_14k is not None and not (max_shear_observed is not None and max_shear_observed <= max_shear_14k):
+            reasons.append("shear")
+        if max_dir_change is not None and not (max_dir_observed is not None and max_dir_observed <= max_dir_change):
+            reasons.append("direction change")
+
+    def component(ok: bool, detail: str) -> Dict[str, str]:
+        return {"status": "good" if ok else "no_go", "detail": detail}
+
+    components = {
+        "wind": component(surface_ok, "Unavailable" if wind_kt is None else f"{_round_display(wind_kt)} kt / max {_round_display(max_surface)}"),
+        "gust": component(gust_ok, "Unavailable" if gust_kt is None else f"{_round_display(gust_kt)} kt / +{_round_display(spread_kt)} / max {_round_display(max_gust)}"),
+        "temp": component(temp_ok, "Unavailable" if temp_f is None else f"{_round_display(temp_f)}°F / limit {_round_display(min_temp_f)}–{_round_display(max_temp_f)}"),
+        "visibility": component(visibility_ok, "Unavailable" if vis_sm is None else f"{vis_sm:g} sm / min {min_visibility_sm:g}"),
+        "clouds": component(clouds_ok, (cloud_summary or "Unavailable") + (f" / min {_round_display(min_ceiling_limit)} ft" if min_ceiling_limit is not None else "")),
+        "density_altitude": component(da_ok, "Unavailable" if density_alt is None else f"{_round_display(density_alt)} ft / max {_round_display(max_density_alt)}"),
+        "aloft": component(aloft_ok, "Unavailable" if aloft_speed is None else f"{_round_display(aloft_speed)} kt @ {_round_display(aloft_dir)}° near {_round_display(_num((nearest_aloft or {}).get('level_ft')) or exit_alt)} ft"),
+    }
+
+    fail_flags = [surface_ok, gust_ok, temp_ok, visibility_ok, clouds_ok, da_ok, aloft_ok, has_limits, has_metar]
+    go = all(bool(x) for x in fail_flags)
+    uniq_reasons: List[str] = []
+    for r in reasons:
+        if r not in uniq_reasons:
+            uniq_reasons.append(r)
+
+    return {
+        "go": go,
+        "label": "GO" if go else "NO GO",
+        "status": "good" if go else "no_go",
+        "reasons": uniq_reasons,
+        "components": components,
+        "surface_ok": surface_ok,
+        "gust_ok": gust_ok,
+        "temp_ok": temp_ok,
+        "visibility_ok": visibility_ok,
+        "clouds_ok": clouds_ok,
+        "da_ok": da_ok,
+        "aloft_ok": aloft_ok,
+        "performance": {
+            "field_elevation_ft": field_elev,
+            "pressure_altitude_ft": pressure_alt,
+            "density_altitude_ft": density_alt,
+        },
+        "surface": {
+            "wind_kt": wind_kt,
+            "gust_kt": gust_kt,
+            "temp_f": temp_f,
+            "temp_c": temp_c,
+            "dir_from_deg": _num(metar.get("wind_dir_deg")),
+        },
+        "weather": {
+            "pressureAlt": pressure_alt,
+            "densityAlt": density_alt,
+            "minVisibilitySm": min_visibility_sm,
+            "minCeilingFtAgl": min_ceiling_limit,
+            "maxDensityAlt": max_density_alt,
+            "ceilingFtAgl": ceiling_ft_agl,
+            "lowestCloudBase": lowest_cloud_base,
+            "components": components,
+        },
+    }
+
+
 def _profile_is_complete(p: Dict[str, Any]) -> Tuple[bool, List[str]]:
     missing = []
     if not (p.get("icao") and isinstance(p.get("icao"), str) and p.get("icao").strip()):
         missing.append("icao")
     if p.get("lat") is None or p.get("lon") is None:
         missing.append("lat/lon")
-    if p.get("field_elevation_ft") is None:
-        missing.append("field_elevation_ft")
     return (len(missing) == 0), missing
+
+
+def _merge_profile_obj(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    merged = dict(base or {})
+    if not isinstance(override, dict):
+        return merged
+    for k, v in override.items():
+        if k == "limits" and isinstance(v, dict):
+            merged_limits = dict((base or {}).get("limits") or {})
+            merged_limits.update(v)
+            merged["limits"] = merged_limits
+        else:
+            merged[k] = v
+    return merged
 
 
 def _load_jump_profiles() -> Dict[str, Any]:
     user = _safe_read_json(JUMP_PROFILES_PATH, default={})
     if not isinstance(user, dict):
         user = {}
-    # built-ins first; user can override by id if they really want to
-    out = dict(BUILTIN_JUMP_PROFILES)
+    out = {k: dict(v) for k, v in BUILTIN_JUMP_PROFILES.items()}
     for k, v in user.items():
-        if isinstance(v, dict):
+        if not isinstance(v, dict):
+            continue
+        if k in out and isinstance(out[k], dict):
+            out[k] = _merge_profile_obj(out[k], v)
+        else:
             out[k] = v
     return out
 
@@ -801,6 +1135,13 @@ def _ensure_files() -> None:
         _safe_write_json(ACTIVE_DZ_PATH, {"active_code": ""})
     if not JUMP_PROFILES_PATH.exists():
         _safe_write_json(JUMP_PROFILES_PATH, {})
+    version_path = BASE_DIR / "version.json"
+    if not version_path.exists():
+        _safe_write_json(version_path, {
+            "version": "dev",
+            "productName": "Skydiving Dashboard",
+            "generatedAt": _dt.datetime.now(_dt.timezone.utc).isoformat().replace("+00:00", "Z")
+        })
 
 @dataclass
 class Store:
@@ -856,194 +1197,8 @@ STORE = Store(
 )
 
 
-def parse_visibility_sm(raw: Optional[str], metar: Dict[str, Any]) -> Optional[float]:
-    if isinstance(metar.get("visibility_sm"), (int, float)):
-        try:
-            return float(metar.get("visibility_sm"))
-        except Exception:
-            pass
-    txt = str(raw or "")
-    m = re.search(r"\b(P?)(\d+)SM\b", txt)
-    if m:
-        val = float(m.group(2))
-        return val if m.group(1) != "P" else val
-    m = re.search(r"\b(\d+) (\d)/(\d)SM\b", txt)
-    if m:
-        return float(m.group(1)) + (float(m.group(2)) / float(m.group(3)))
-    m = re.search(r"\b(\d)/(\d)SM\b", txt)
-    if m:
-        return float(m.group(1)) / float(m.group(2))
-    return None
-
-
-def parse_cloud_layers(raw: Optional[str]) -> List[Dict[str, Any]]:
-    layers = []
-    txt = str(raw or "")
-    for cover, base in re.findall(r"\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b", txt):
-        try:
-            base_agl = int(base) * 100
-        except Exception:
-            continue
-        layers.append({"cover": cover, "base_agl_ft": base_agl})
-    return layers
-
-
-def calc_pressure_altitude(field_elevation_ft: float, altimeter_inhg: float) -> float:
-    return float(field_elevation_ft) + (29.92 - float(altimeter_inhg)) * 1000.0
-
-
-def calc_isa_temp_c(pressure_altitude_ft: float) -> float:
-    return 15.0 - ((float(pressure_altitude_ft) / 1000.0) * 2.0)
-
-
-def calc_density_altitude_ft(field_elevation_ft: float, altimeter_inhg: float, temp_c: float) -> float:
-    pa = calc_pressure_altitude(field_elevation_ft, altimeter_inhg)
-    isa = calc_isa_temp_c(pa)
-    return pa + 120.0 * (float(temp_c) - isa)
-
-
-def get_density_altitude_band(da_ft: Optional[float]) -> Dict[str, Any]:
-    if da_ft is None:
-        return {"status": "unknown", "label": "Unknown", "color": "muted", "reason": "Density altitude unavailable"}
-    if da_ft <= 2000:
-        return {"status": "good", "label": "Green", "color": "good", "reason": "Normal canopy performance"}
-    if da_ft <= 4000:
-        return {"status": "caution", "label": "Yellow", "color": "warn", "reason": "Faster landings, reduced flare margin"}
-    if da_ft <= 6000:
-        return {"status": "caution", "label": "Orange", "color": "warn", "reason": "Significant canopy performance change"}
-    return {"status": "caution", "label": "Red", "color": "bad", "reason": "High-risk canopy and landing conditions"}
-
-
-def get_visibility_status(visibility_sm: Optional[float], planned_exit_altitude_msl_ft: float) -> Dict[str, Any]:
-    threshold = 5.0 if float(planned_exit_altitude_msl_ft) >= 10000 else 3.0
-    label = f"{int(threshold)} SM minimum for {'>=10k' if threshold == 5.0 else '<10k'} operations"
-    if visibility_sm is None:
-        return {"status": "no_go", "reason": "Visibility unavailable", "threshold_sm": threshold, "visibility_sm": None, "label": label}
-    if visibility_sm < threshold:
-        return {"status": "no_go", "reason": f"Visibility below {int(threshold)} SM for {'>10k' if threshold == 5.0 else '<10k'} operations", "threshold_sm": threshold, "visibility_sm": visibility_sm, "label": label}
-    return {"status": "good", "reason": f"Visibility meets {int(threshold)} SM requirement", "threshold_sm": threshold, "visibility_sm": visibility_sm, "label": label}
-
-
-def get_cloud_status(cloud_layers: List[Dict[str, Any]], planned_exit_altitude_msl_ft: float, deployment_altitude_agl_ft: float, field_elevation_ft: float) -> Dict[str, Any]:
-    if not cloud_layers:
-        return {"status": "good", "reason": "No reported cloud layers affecting jump profile", "ceiling_agl_ft": None, "layers": []}
-    exit_agl = max(0.0, float(planned_exit_altitude_msl_ft) - float(field_elevation_ft))
-    deploy_agl = float(deployment_altitude_agl_ft)
-    bkn_ovc = [l for l in cloud_layers if l.get('cover') in ('BKN', 'OVC')]
-    ceiling = min([l['base_agl_ft'] for l in bkn_ovc], default=None)
-    reasons = []
-    status = 'good'
-    for layer in cloud_layers:
-        base = float(layer.get('base_agl_ft') or 0)
-        cover = layer.get('cover') or ''
-        if cover in ('BKN', 'OVC') and base < exit_agl:
-            status = 'caution'
-            reasons.append(f"{cover} layer below planned exit altitude")
-        if abs(base - deploy_agl) <= 1500:
-            status = 'no_go' if cover in ('BKN', 'OVC') and base <= deploy_agl + 1000 else max(status, 'caution')
-            reasons.append(f"{cover} layer conflicts with deployment band")
-        if deploy_agl <= base <= exit_agl:
-            reasons.append(f"{cover} layer present in freefall band")
-            if status != 'no_go':
-                status = 'caution'
-    if ceiling is not None and ceiling <= deploy_agl + 1000:
-        status = 'no_go'
-        reasons.append("Low ceiling near deployment altitude")
-    if not reasons:
-        reasons.append("Cloud layers do not appear to conflict with jump profile")
-    return {"status": status, "reason": "; ".join(dict.fromkeys(reasons)), "ceiling_agl_ft": ceiling, "layers": cloud_layers}
-
-
-def _status_rank(value: str) -> int:
-    return {"good": 0, "caution": 1, "no_go": 2}.get(value, 2)
-
-
-def evaluate_weather(profile: Dict[str, Any], limits: Dict[str, Any], metar: Dict[str, Any], aloft: Dict[str, Any]) -> Dict[str, Any]:
-    reasons = []
-    components = {}
-    final_status = 'good'
-
-    wind_status = 'good'
-    ws = metar.get('wind_speed_kt')
-    wg = metar.get('wind_gust_kt')
-    gust_spread = None
-    if ws is None:
-        wind_status = 'no_go'
-        reasons.append('Surface wind unavailable')
-    else:
-        max_surface = limits.get('max_surface_wind_kt')
-        max_gust = limits.get('max_gust_kt')
-        if max_surface is not None and float(ws) > float(max_surface):
-            wind_status = 'no_go'
-            reasons.append(f'Surface wind {ws} kt exceeds limit {max_surface} kt')
-        if wg is not None:
-            gust_spread = float(wg) - float(ws)
-            if max_gust is not None and float(wg) > float(max_gust):
-                wind_status = 'no_go'
-                reasons.append(f'Gust {wg} kt exceeds limit {max_gust} kt')
-            max_spread = limits.get('max_gust_spread_kt')
-            if max_spread is not None and gust_spread > float(max_spread):
-                wind_status = 'caution' if wind_status != 'no_go' else wind_status
-                reasons.append(f'Gust spread {gust_spread:.0f} kt exceeds limit {max_spread} kt')
-    components['wind'] = {'status': wind_status, 'wind_speed_kt': ws, 'wind_gust_kt': wg, 'gust_spread_kt': gust_spread}
-
-    planned_exit = float(limits.get('planned_exit_altitude_msl_ft') or 13500)
-    deploy = float(limits.get('deployment_altitude_agl_ft') or 3500)
-    field_elev = profile.get('field_elevation_ft')
-    altim = metar.get('altim_in_hg')
-    temp_c = metar.get('temp_c')
-    visibility_sm = parse_visibility_sm(metar.get('raw'), metar)
-    vis = get_visibility_status(visibility_sm, planned_exit)
-    components['visibility'] = vis
-    if vis['status'] != 'good':
-        reasons.append(vis['reason'])
-
-    cloud_layers = parse_cloud_layers(metar.get('raw'))
-    clouds = get_cloud_status(cloud_layers, planned_exit, deploy, field_elev or 0)
-    components['clouds'] = clouds
-    if clouds['status'] != 'good':
-        reasons.append(clouds['reason'])
-
-    pa = isa = da = None
-    if field_elev is not None and altim is not None and temp_c is not None:
-        pa = calc_pressure_altitude(field_elev, altim)
-        isa = calc_isa_temp_c(pa)
-        da = calc_density_altitude_ft(field_elev, altim, temp_c)
-    da_band = get_density_altitude_band(da)
-    components['density_altitude'] = {
-        'status': da_band['status'], 'reason': da_band['reason'], 'pressure_altitude_ft': None if pa is None else round(pa),
-        'isa_temp_c': None if isa is None else round(isa, 1), 'density_altitude_ft': None if da is None else round(da), 'band': da_band['label']
-    }
-    if da_band['status'] != 'good':
-        reasons.append(f"Density altitude elevated — {da_band['reason'].lower()}")
-
-    for part in components.values():
-        final_status = max([final_status, part['status']], key=_status_rank)
-
-    friendly = {'good': 'GOOD', 'caution': 'CAUTION', 'no_go': 'NO GO'}[final_status]
-    return {
-        'status': final_status,
-        'label': friendly,
-        'reasons': list(dict.fromkeys(reasons)) or ['Conditions within configured limits'],
-        'components': components,
-        'performance': {
-            'field_elevation_ft': field_elev,
-            'altimeter_inhg': altim,
-            'temp_c': temp_c,
-            'temp_f': metar.get('temp_f'),
-            'pressure_altitude_ft': None if pa is None else round(pa),
-            'isa_temp_c': None if isa is None else round(isa, 1),
-            'density_altitude_ft': None if da is None else round(da),
-            'planned_exit_altitude_msl_ft': round(planned_exit),
-            'deployment_altitude_agl_ft': round(deploy),
-            'visibility_sm': visibility_sm,
-            'cloud_layers': cloud_layers,
-        }
-    }
-
-
 class Handler(BaseHTTPRequestHandler):
-    server_version = "dzfeed/locked-fixed"
+    server_version = "dzfeed/logic-tv-fix-2"
 
     def _send(self, status: int, body: bytes, content_type: str = "application/json; charset=utf-8") -> None:
         self.send_response(status)
@@ -1110,6 +1265,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(204, b"", content_type="text/plain; charset=utf-8")
             return
 
+        if path == "/build_info.json":
+            version_json = Path(__file__).resolve().parent / "version.json"
+            payload = {"ok": True, "version": None, "productName": None}
+            if version_json.exists():
+                data = _safe_read_json(version_json, default={})
+                if isinstance(data, dict):
+                    payload.update(data)
+            if not payload.get("version"):
+                payload["version"] = getattr(self, "server_version", None)
+            self._send_json(200, payload)
+            return
+
         if path == "/status.json":
             code = STORE.active_code
             prof = STORE.profiles.get(code) if code else None
@@ -1127,14 +1294,17 @@ class Handler(BaseHTTPRequestHandler):
                 "active_dz_exists": ACTIVE_DZ_PATH.exists(),
                 "jump_profiles_path": str(JUMP_PROFILES_PATH),
                 "jump_profiles_exists": JUMP_PROFILES_PATH.exists(),
+                "server_version": getattr(self, "server_version", None),
             })
             return
 
         if path == "/config.json":
+            limits = STORE.get_limits()
             self._send_json(200, {
                 "ok": True,
                 "active": STORE.active,
-                "limits": STORE.get_limits(),
+                "limits": limits,
+                "active_profile_id": STORE.active_profile_id,
             })
             return
 
@@ -1216,6 +1386,8 @@ class Handler(BaseHTTPRequestHandler):
             aloft = fetch_open_meteo_aloft(float(lat), float(lon)) if (dz_ok and lat is not None and lon is not None) else {
                 "ok": False, "source": "Open-Meteo", "error": f"incomplete DZ metadata ({', '.join(dz_missing)})", "levels": []
             }
+            limits = STORE.get_limits()
+            decision = _compute_snapshot_decision(limits, prof, metar, aloft)
 
             self._send_json(200, {
                 "ok": True,
@@ -1237,11 +1409,13 @@ class Handler(BaseHTTPRequestHandler):
                 },
                 "dz_metadata_ok": dz_ok,
                 "dz_metadata_missing": dz_missing,
-                "limits": STORE.get_limits(),
+                "limits": limits,
+                "decision": decision,
+                "surface": decision.get("surface"),
+                "weather": decision.get("weather"),
                 "active_profile_id": STORE.active_profile_id,
                 "metar": metar,
                 "aloft": aloft,
-                "weather": evaluate_weather({**prof, "field_elevation_ft": prof.get("field_elevation_ft")}, STORE.get_limits(), metar, aloft),
                 "radar": {
                     "station": radar_station,
                     "image_url": build_radar_image_url(radar_station, prof.get('state','')),
@@ -1402,9 +1576,12 @@ class Handler(BaseHTTPRequestHandler):
                 if k not in DEFAULT_LIMITS:
                     continue
                 try:
-                    clean_limits[k] = int(v)
+                    n = float(v)
+                    if k in {"min_visibility_sm"}:
+                        clean_limits[k] = n
+                    else:
+                        clean_limits[k] = int(round(n))
                 except Exception:
-                    # allow max_dir_change_deg, etc; still ints
                     pass
             user[pid] = {"name": name, "limits": clean_limits}
             _safe_write_json(JUMP_PROFILES_PATH, user)
