@@ -209,6 +209,34 @@ function createWindow(dashboardPath) {
     }
   });
 
+  const handleAppCommandUrl = (rawUrl) => {
+    const url = String(rawUrl || "").trim();
+    if (url === "app://exit") {
+      app.quit();
+      return true;
+    }
+    return false;
+  };
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (handleAppCommandUrl(url)) {
+      event.preventDefault();
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (handleAppCommandUrl(url)) {
+      return { action: "deny" };
+    }
+    return { action: "allow" };
+  });
+
+  mainWindow.loadFile(dashboardPath);
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
   mainWindow.loadFile(dashboardPath);
 
   mainWindow.on("closed", () => {
