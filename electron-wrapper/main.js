@@ -74,6 +74,13 @@ function writeRuntimeVersionJson(runtimeDir) {
   }
 }
 
+/*
+ * Ensure that the dashboard HTML, feed server script and configuration
+ * files in the user's runtime directory are up to date with the version
+ * bundled in this release. Stores the current packaged version in
+ * runtime/version.txt. If the version differs, it deletes the old
+ * dashboard, server script and config before copying the new ones.
+ */
 function ensureRuntimeFiles() {
   const runtimeDir = getRuntimeDir();
   ensureDir(runtimeDir);
@@ -101,13 +108,17 @@ function ensureRuntimeFiles() {
     for (const f of filesToRemove) {
       try {
         if (exists(f)) fs.unlinkSync(f);
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
 
     for (const d of dirsToRemove) {
       try {
         if (exists(d)) fs.rmSync(d, { recursive: true, force: true });
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
 
@@ -129,7 +140,9 @@ function ensureRuntimeFiles() {
 
   try {
     fs.writeFileSync(versionFile, currentVersion, "utf8");
-  } catch {}
+  } catch {
+    // not fatal
+  }
 
   writeRuntimeVersionJson(runtimeDir);
 
@@ -171,10 +184,14 @@ async function startServerWithFallback(serverScriptPath, cwd) {
       if (!proc.killed && proc.exitCode === null) {
         return proc;
       }
-    } catch {}
+    } catch {
+      // try next
+    }
   }
 
-  throw new Error("Could not start Python feed server.");
+  throw new Error(
+    "Could not start Python feed server.\n\nInstall Python 3 and ensure 'python' (or 'py') is available in PATH."
+  );
 }
 
 function createWindow(dashboardPath) {
@@ -188,30 +205,9 @@ function createWindow(dashboardPath) {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: true,
+      backgroundThrottling: false
     }
-  });
-
-  const handleAppCommandUrl = (rawUrl) => {
-    const url = String(rawUrl || "").trim();
-    if (url === "app://exit") {
-      app.quit();
-      return true;
-    }
-    return false;
-  };
-
-  mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (handleAppCommandUrl(url)) {
-      event.preventDefault();
-    }
-  });
-
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (handleAppCommandUrl(url)) {
-      return { action: "deny" };
-    }
-    return { action: "allow" };
   });
 
   mainWindow.loadFile(dashboardPath);
@@ -233,7 +229,9 @@ async function shutdownServer() {
         if (serverProc && serverProc.exitCode === null) {
           try {
             serverProc.kill("SIGKILL");
-          } catch {}
+          } catch {
+            // ignore
+          }
         }
         resolve();
       }, 1500);
@@ -259,7 +257,9 @@ app.on("before-quit", async (e) => {
 app.whenReady().then(async () => {
   try {
     const { runtimeDir, dashboardPath, serverScriptPath } = ensureRuntimeFiles();
+
     serverProc = await startServerWithFallback(serverScriptPath, runtimeDir);
+
     createWindow(dashboardPath);
   } catch (err) {
     dialog.showErrorBox("Skydiving Dashboard", String(err?.message || err));

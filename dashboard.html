@@ -54,66 +54,6 @@
     font-size:20px;
   }
   .topbar .spacer{ flex:1; }
-
-  .topbarClock{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:6px 12px;
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:14px;
-    background:rgba(255,255,255,.05);
-    min-width:250px;
-  }
-  .clockPrimaryWrap{
-    display:flex;
-    align-items:baseline;
-    gap:10px;
-    min-width:0;
-  }
-  .clockPrimary{
-    font-family:var(--mono);
-    font-size:26px;
-    font-weight:900;
-    line-height:1;
-    letter-spacing:.04em;
-    color:#7fd8ff;
-  }
-  .clockPrimaryMeta{
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-    font-size:11px;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    line-height:1.1;
-  }
-  .clockSecondaryWrap{
-    margin-left:auto;
-    display:grid;
-    grid-template-columns:auto auto;
-    gap:2px 8px;
-    align-items:center;
-    font-size:11px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-  }
-  .clockLocalTag,.clockUtcTag{ color:var(--muted); }
-  .clockSecondary{
-    font-family:var(--mono);
-    font-size:16px;
-    font-weight:800;
-    color:var(--text);
-    line-height:1;
-  }
-  .topbarStatus{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    white-space:nowrap;
-  }
-  #statusText{ display:none; }
   .ctl{
     display:flex;
     flex-direction:row;
@@ -162,21 +102,21 @@
   padding:var(--gap);
   display:grid;
   /* Give Winds Aloft more vertical room (bottom row) */
-  grid-template-rows: 42% 58%;
+  grid-template-rows: 40% 60%;
   gap:var(--gap);
   min-height:0;
 }
 
 .rowTop{
   display:grid;
-  grid-template-columns: minmax(420px, 34%) minmax(0, 66%);
+  grid-template-columns: 33% 67%;
   gap:var(--gap);
   min-height:0;
 }
 
 .rowBottom{
   display:grid;
-  grid-template-columns: minmax(300px, 24%) minmax(0, 38%) minmax(0, 38%);
+  grid-template-columns: 25% 37% 38%;
   gap:var(--gap);
   min-height:0;
 }
@@ -251,7 +191,7 @@
     background: linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.18));
   }
   .big{
-    font-size:46px;
+    font-size:50px;
     font-weight:950;
     letter-spacing: .6px;
     line-height: 1;
@@ -562,6 +502,7 @@ th, td{
 }
 
 /* micro-flash on DZ change */
+.panel.clock{ display:none !important; }
 
 
 
@@ -652,20 +593,10 @@ th, td{
 <body>
   <div class="topbar">
     <div class="title">Skydiving Dashboard</div>
-    <div class="topbarClock" id="clockPanel" aria-label="Clock">
-      <div class="clockPrimaryWrap">
-        <span class="clockPrimary" id="clockLocalTime">--:--</span>
-        <span class="clockPrimaryMeta">
-          <span id="clockLocalDow">---</span>
-          <span id="clockLocalDate">--/--</span>
-        </span>
-      </div>
-      <div class="clockSecondaryWrap">
-        <span class="clockLocalTag" id="clockLocalLabel">Local</span>
-        <span class="clockUtcTag">UTC</span>
-        <span class="clockSecondary" id="clockUtcTime">--:--</span>
-      </div>
+    <div id="clockPanel" style="display:none;" aria-hidden="true">
+      <span id="clockLocalTime"></span><span id="clockLocalDow"></span><span id="clockLocalDate"></span><span id="clockUtcTime"></span><span id="clockLocalLabel"></span>
     </div>
+
 
     <div class="ctl">
       <label>Dropzone</label>
@@ -680,7 +611,7 @@ th, td{
     <button id="refreshBtn" title="Refresh live data">Refresh</button>
     <button id="limitsBtn" title="Edit jump limits for the active profile">Limits</button>
 <div class="spacer"></div>
-    <div class="topbarStatus"><div class="small" id="buildStamp">Build —</div><div class="small" id="statusText" aria-hidden="true">—</div></div>
+    <div class="small" id="buildStamp" style="margin-right:12px;">Build —</div><div class="small" id="statusText">—</div>
     <button id="exitBtn" class="topbarExit exitBtn" title="Exit dashboard">Exit</button>
   </div>
 
@@ -1296,9 +1227,7 @@ th, td{
   }
 
   function setDecisionUI(snapshot){
-    const res = (snapshot && snapshot.decision && typeof snapshot.decision === "object" && typeof snapshot.decision.go === "boolean")
-      ? snapshot.decision
-      : computeDecision(snapshot);
+    const res = computeDecision(snapshot);
     const card = $("decisionCard");
     const goText = $("goText");
     const reasonBadge = $("reasonBadge");
@@ -1576,22 +1505,18 @@ th, td{
     const cmp = wx.components || {};
     const limits = snap.limits || {};
 
-    const perf = (snap && snap.decision && snap.decision.performance && typeof snap.decision.performance === "object")
-      ? snap.decision.performance
-      : (wx.performance || {});
-
-    const fieldElev = Number.isFinite(Number(perf.field_elevation_ft))
-      ? Number(perf.field_elevation_ft)
+    const fieldElev = Number.isFinite(Number((wx.performance || {}).field_elevation_ft))
+      ? Number((wx.performance || {}).field_elevation_ft)
       : (Number.isFinite(Number(prof.field_elevation_ft)) ? Number(prof.field_elevation_ft) : null);
     const altim = Number.isFinite(Number(metar.altim_in_hg)) ? Number(metar.altim_in_hg) : null;
     const tempC = Number.isFinite(Number(metar.temp_c)) ? Number(metar.temp_c) : null;
-    const pressureAlt = Number.isFinite(Number(perf.pressure_altitude_ft))
-      ? Math.round(Number(perf.pressure_altitude_ft))
-      : ((fieldElev != null && altim != null) ? Math.round(fieldElev + ((29.92 - altim) * 1000)) : null);
-    const isaTemp = (pressureAlt != null) ? (15 - ((pressureAlt / 1000) * 1.98)) : null;
-    const densityAlt = Number.isFinite(Number(perf.density_altitude_ft))
-      ? Math.round(Number(perf.density_altitude_ft))
-      : ((pressureAlt != null && tempC != null) ? Math.round(pressureAlt + (120 * (tempC - isaTemp))) : null);
+    const pressureAlt = (fieldElev != null && altim != null)
+      ? Math.round(fieldElev + ((29.92 - altim) * 1000))
+      : null;
+    const isaTemp = (pressureAlt != null) ? (15 - ((pressureAlt / 1000) * 2)) : null;
+    const densityAlt = (pressureAlt != null && tempC != null)
+      ? Math.round(pressureAlt + (120 * (tempC - isaTemp)))
+      : null;
 
     const vis = Number.isFinite(Number(metar.visibility_sm)) ? Number(metar.visibility_sm) : null;
     const cloudSummary = (typeof metar.cloud_summary === "string" && metar.cloud_summary.trim())
@@ -1645,7 +1570,7 @@ th, td{
 
   // --- Events ---
   $("refreshBtn").addEventListener("click", async () => {
-    await refreshSnapshot();
+    await refreshSnapshotManaged({reason:"manual", forceAloftStamp:true});
   });
 
   $("exitBtn").addEventListener("click", () => {
@@ -1690,14 +1615,15 @@ th, td{
     flashClock();
     await apiPost("/set_dz", {code: newCode});
     await loadStatus();
-    await refreshSnapshot();
+    await refreshSnapshotManaged({reason:"dz-change", forceAloftStamp:true});
     // Restart manifest rotation when DZ changes
     startManifestRotation();
+    startAutoRefresh();
   });
 
   $("profileSelect").addEventListener("change", async (e) => {
     await apiPost("/set_profile", {profile_id: e.target.value});
-    await refreshSnapshot();
+    await refreshSnapshotManaged({reason:"profile-change"});
   });
 
   $("saveProfileBtn").addEventListener("click", async () => {
@@ -1741,17 +1667,124 @@ th, td{
       alert("Save failed: " + (res.error || "unknown"));
     } else {
       await loadProfiles();
-      await refreshSnapshot();
+      await refreshSnapshotManaged({reason:"profile-save"});
       // (No need to restart manifest rotation here; active DZ has not changed)
     }
 
   });
 
+  let AUTO_REFRESH_TIMERS = {
+    metar: null,
+    aloft: null,
+    heartbeat: null,
+  };
+  let LAST_REFRESH_AT_MS = 0;
+  let LAST_ALOFT_REFRESH_AT_MS = 0;
+  let REFRESH_IN_FLIGHT = null;
+
+  async function refreshSnapshotManaged(opts){
+    const options = opts || {};
+    const reason = options.reason || "auto";
+    const forceAloftStamp = !!options.forceAloftStamp;
+
+    if (REFRESH_IN_FLIGHT) {
+      return REFRESH_IN_FLIGHT;
+    }
+
+    REFRESH_IN_FLIGHT = (async () => {
+      await refreshSnapshot();
+      const now = Date.now();
+      LAST_REFRESH_AT_MS = now;
+      if (forceAloftStamp || reason === "aloft-hourly" || reason === "init") {
+        LAST_ALOFT_REFRESH_AT_MS = now;
+      }
+      return true;
+    })();
+
+    try {
+      return await REFRESH_IN_FLIGHT;
+    } finally {
+      REFRESH_IN_FLIGHT = null;
+    }
+  }
+
+  function clearAutoRefreshTimers(){
+    for (const k of Object.keys(AUTO_REFRESH_TIMERS)) {
+      if (AUTO_REFRESH_TIMERS[k]) {
+        window.clearTimeout(AUTO_REFRESH_TIMERS[k]);
+        window.clearInterval(AUTO_REFRESH_TIMERS[k]);
+        AUTO_REFRESH_TIMERS[k] = null;
+      }
+    }
+  }
+
+  function scheduleMetarRefresh(){
+    if (AUTO_REFRESH_TIMERS.metar) window.clearTimeout(AUTO_REFRESH_TIMERS.metar);
+
+    const periodMs = 5 * 60 * 1000;
+    const now = Date.now();
+    const nextAt = Math.floor(now / periodMs) * periodMs + periodMs + 1500;
+    const delay = Math.max(1000, nextAt - now);
+
+    AUTO_REFRESH_TIMERS.metar = window.setTimeout(async () => {
+      try {
+        await refreshSnapshotManaged({reason:"metar-5min"});
+      } catch (e) {
+        console.error("scheduled METAR refresh failed", e);
+      } finally {
+        scheduleMetarRefresh();
+      }
+    }, delay);
+  }
+
+  function scheduleAloftRefresh(){
+    if (AUTO_REFRESH_TIMERS.aloft) window.clearTimeout(AUTO_REFRESH_TIMERS.aloft);
+
+    const nowDate = new Date();
+    const nextHour = new Date(nowDate);
+    nextHour.setMinutes(0, 0, 0);
+    nextHour.setHours(nextHour.getHours() + 1);
+    nextHour.setSeconds(15, 0);
+    const delay = Math.max(1000, nextHour.getTime() - Date.now());
+
+    AUTO_REFRESH_TIMERS.aloft = window.setTimeout(async () => {
+      try {
+        await refreshSnapshotManaged({reason:"aloft-hourly", forceAloftStamp:true});
+      } catch (e) {
+        console.error("scheduled winds-aloft refresh failed", e);
+      } finally {
+        scheduleAloftRefresh();
+      }
+    }, delay);
+  }
+
+  function startAutoRefresh(){
+    clearAutoRefreshTimers();
+    scheduleMetarRefresh();
+    scheduleAloftRefresh();
+
+    AUTO_REFRESH_TIMERS.heartbeat = window.setInterval(async () => {
+      const now = Date.now();
+      const metarDue = !LAST_REFRESH_AT_MS || (now - LAST_REFRESH_AT_MS) > (6 * 60 * 1000);
+      const aloftDue = !LAST_ALOFT_REFRESH_AT_MS || (now - LAST_ALOFT_REFRESH_AT_MS) > (65 * 60 * 1000);
+      if (!metarDue && !aloftDue) return;
+
+      try {
+        await refreshSnapshotManaged({
+          reason: aloftDue ? "heartbeat-aloft" : "heartbeat-metar",
+          forceAloftStamp: aloftDue,
+        });
+      } catch (e) {
+        console.error("auto-refresh heartbeat failed", e);
+      }
+    }, 60 * 1000);
+  }
+
   // --- Init ---
   (async function init(){
     try{
       await loadStatus();
-      const dzs = await loadDZs();
+      await loadDZs();
       await loadProfiles();
 
       // choose current active dz if server has one
@@ -1765,15 +1798,11 @@ th, td{
       setClockDZ(CURRENT_DZ_CODE || $("dzSelect").value);
       startClock();
 
-      await refreshSnapshot();
+      await refreshSnapshotManaged({reason:"init", forceAloftStamp:true});
 
       // Start manifest rotation after initial load
       startManifestRotation();
-
-      // Auto-refresh every 5 minutes (and the user can still smash Refresh anytime).
-      setInterval(() => {
-        refreshSnapshot().catch(()=>{});
-      }, 5 * 60 * 1000);
+      startAutoRefresh();
     }catch(e){
       console.error("init failed", e);
       $("statusText").textContent = "Load error: " + ((e && e.message) ? e.message : e);
@@ -1961,6 +1990,30 @@ th, td{
       throw e;
     }
   };
+
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      refreshSnapshotManaged({reason:"visibility", forceAloftStamp:false}).catch((e) => {
+        console.error("visibility refresh failed", e);
+      });
+      startAutoRefresh();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    refreshSnapshotManaged({reason:"focus", forceAloftStamp:false}).catch((e) => {
+      console.error("focus refresh failed", e);
+    });
+    startAutoRefresh();
+  });
+
+  window.addEventListener("online", () => {
+    refreshSnapshotManaged({reason:"online", forceAloftStamp:true}).catch((e) => {
+      console.error("online refresh failed", e);
+    });
+    startAutoRefresh();
+  });
 
   window.addEventListener('error', (e) => {
     try { console.error('window error', e.error || e.message || e); } catch (_) {}
