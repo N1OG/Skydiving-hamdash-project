@@ -1760,7 +1760,7 @@ th, td{
 
   $("exitBtn").addEventListener("click", async () => {
     try {
-      await fetch(API + "/exit", { method: "POST", cache: "no-store" });
+      await fetch(API + "/exit", { method: "GET", cache: "no-store" });
       return;
     } catch {}
     try {
