@@ -27,6 +27,19 @@ function ensureDir(p) {
   if (!exists(p)) fs.mkdirSync(p, { recursive: true });
 }
 
+function readTextSafe(p) {
+  try {
+    return fs.readFileSync(p, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+function copyFileAlways(src, dst) {
+  ensureDir(path.dirname(dst));
+  fs.copyFileSync(src, dst);
+}
+
 function copyFileIfMissing(src, dst) {
   if (!exists(dst)) {
     ensureDir(path.dirname(dst));
@@ -34,10 +47,27 @@ function copyFileIfMissing(src, dst) {
   }
 }
 
+function syncTextFileIfChanged(src, dst) {
+  const srcText = readTextSafe(src);
+  if (srcText === null) {
+    throw new Error(`Missing bundled file: ${src}`);
+  }
+  const dstText = readTextSafe(dst);
+  if (dstText !== srcText) {
+    ensureDir(path.dirname(dst));
+    fs.writeFileSync(dst, srcText, "utf8");
+  }
+}
+
 function copyDirIfMissing(srcDir, dstDir) {
   if (exists(dstDir)) return;
   ensureDir(dstDir);
   fs.cpSync(srcDir, dstDir, { recursive: true, force: false, errorOnExist: false });
+}
+
+function syncManagedConfigFile(src, dst) {
+  if (!exists(src)) return;
+  syncTextFileIfChanged(src, dst);
 }
 
 function getBundledPath(rel) {
@@ -49,6 +79,10 @@ function getBundledPath(rel) {
 
 function getRuntimeDir() {
   return path.join(app.getPath("userData"), "runtime");
+}
+
+function getRuntimeConfigDir(runtimeDir) {
+  return path.join(runtimeDir, "config");
 }
 
 function getAppVersionString() {
@@ -74,57 +108,12 @@ function writeRuntimeVersionJson(runtimeDir) {
   }
 }
 
-/*
- * Ensure that the dashboard HTML, feed server script and configuration
- * files in the user's runtime directory are up to date with the version
- * bundled in this release. Stores the current packaged version in
- * runtime/version.txt. If the version differs, it deletes the old
- * dashboard, server script and config before copying the new ones.
- */
 function ensureRuntimeFiles() {
   const runtimeDir = getRuntimeDir();
   ensureDir(runtimeDir);
 
-  const versionFile = path.join(runtimeDir, "version.txt");
-  const currentVersion = getAppVersionString();
-  let existingVersion = null;
-
-  if (exists(versionFile)) {
-    try {
-      existingVersion = fs.readFileSync(versionFile, "utf8").trim();
-    } catch {
-      existingVersion = null;
-    }
-  }
-
-  function clearManagedFiles() {
-    const filesToRemove = [
-      path.join(runtimeDir, "dashboard.html"),
-      path.join(runtimeDir, "dz_feed_server.py"),
-      path.join(runtimeDir, "version.json")
-    ];
-    const dirsToRemove = [path.join(runtimeDir, "config")];
-
-    for (const f of filesToRemove) {
-      try {
-        if (exists(f)) fs.unlinkSync(f);
-      } catch {
-        // ignore
-      }
-    }
-
-    for (const d of dirsToRemove) {
-      try {
-        if (exists(d)) fs.rmSync(d, { recursive: true, force: true });
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  if (existingVersion !== currentVersion) {
-    clearManagedFiles();
-  }
+  const runtimeConfigDir = getRuntimeConfigDir(runtimeDir);
+  ensureDir(runtimeConfigDir);
 
   const srcDashboard = getBundledPath("dashboard.html");
   const srcServer = getBundledPath("dz_feed_server.py");
@@ -132,16 +121,30 @@ function ensureRuntimeFiles() {
 
   const dstDashboard = path.join(runtimeDir, "dashboard.html");
   const dstServer = path.join(runtimeDir, "dz_feed_server.py");
-  const dstConfigDir = path.join(runtimeDir, "config");
 
-  copyFileIfMissing(srcDashboard, dstDashboard);
-  copyFileIfMissing(srcServer, dstServer);
-  copyDirIfMissing(srcConfigDir, dstConfigDir);
+  syncTextFileIfChanged(srcDashboard, dstDashboard);
+  syncTextFileIfChanged(srcServer, dstServer);
 
-  try {
-    fs.writeFileSync(versionFile, currentVersion, "utf8");
-  } catch {
-    // not fatal
+  if (exists(srcConfigDir)) {
+    copyDirIfMissing(srcConfigDir, runtimeConfigDir);
+
+    syncManagedConfigFile(
+      path.join(srcConfigDir, "dz_profiles.json"),
+      path.join(runtimeConfigDir, "dz_profiles.json")
+    );
+
+    copyFileIfMissing(
+      path.join(srcConfigDir, "active_dz.json"),
+      path.join(runtimeConfigDir, "active_dz.json")
+    );
+    copyFileIfMissing(
+      path.join(srcConfigDir, "jump_profiles.json"),
+      path.join(runtimeConfigDir, "jump_profiles.json")
+    );
+    copyFileIfMissing(
+      path.join(srcConfigDir, "manual_overrides.json"),
+      path.join(runtimeConfigDir, "manual_overrides.json")
+    );
   }
 
   writeRuntimeVersionJson(runtimeDir);
@@ -206,7 +209,8 @@ function createWindow(dashboardPath) {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      webviewTag: true
     }
   });
 
@@ -257,9 +261,7 @@ app.on("before-quit", async (e) => {
 app.whenReady().then(async () => {
   try {
     const { runtimeDir, dashboardPath, serverScriptPath } = ensureRuntimeFiles();
-
     serverProc = await startServerWithFallback(serverScriptPath, runtimeDir);
-
     createWindow(dashboardPath);
   } catch (err) {
     dialog.showErrorBox("Skydiving Dashboard", String(err?.message || err));
