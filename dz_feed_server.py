@@ -1175,15 +1175,21 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/profiles.json":
             jp = _load_jump_profiles()
+            # Read the user file directly so we know which IDs have been overridden.
+            user_profiles = _safe_read_json(JUMP_PROFILES_PATH, default={})
+            if not isinstance(user_profiles, dict):
+                user_profiles = {}
             items = []
             for pid, obj in sorted(jp.items(), key=lambda kv: kv[0]):
                 if not isinstance(obj, dict):
                     continue
+                # A profile is only "built-in" if the user has NOT overridden it.
+                is_builtin = pid in BUILTIN_JUMP_PROFILES and pid not in user_profiles
                 items.append({
                     "profile_id": pid,
                     "name": obj.get("name") or pid,
                     "limits": obj.get("limits") if isinstance(obj.get("limits"), dict) else {},
-                    "builtin": pid in BUILTIN_JUMP_PROFILES,
+                    "builtin": is_builtin,
                 })
             self._send_json(200, {"ok": True, "active_profile_id": STORE.active_profile_id, "profiles": items})
             return
