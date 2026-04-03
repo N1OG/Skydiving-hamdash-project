@@ -661,7 +661,7 @@ th, td{
         </span>
       </div>
       <div class="clockSecondaryWrap">
-        <span class="clockLocalTag" id="clockLocalLabel">Local</span>
+        <span class="clockLocalTag" id="clockLocalLabel"></span>
         <span class="clockUtcTag">UTC</span>
         <span class="clockSecondary" id="clockUtcTime">--:--</span>
       </div>
@@ -706,7 +706,6 @@ th, td{
           <div class="breakRow"><div class="breakLabel">Visibility</div><div class="breakState info" id="breakVisibilityState">—</div><div class="breakDetail" id="breakVisibilityDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Clouds</div><div class="breakState info" id="breakCloudsState">—</div><div class="breakDetail" id="breakCloudsDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Density Alt</div><div class="breakState info" id="breakDAState">—</div><div class="breakDetail" id="breakDADetail">—</div></div>
-          <div class="breakRow"><div class="breakLabel">Aloft</div><div class="breakState info" id="breakAloftState">—</div><div class="breakDetail" id="breakAloftDetail">—</div></div>
         </div>
       </div>
     </div>
@@ -820,15 +819,7 @@ th, td{
   let CURRENT_DZ_CODE = null;
   let CURRENT_TZ = null;
   let CLOCK_TIMER = null;
-  let AUTO_REFRESH_TIMER = null;
-  let AUTO_REFRESH_HEARTBEAT = null;
-  let LAST_REFRESH_AT_MS = 0;
-  let LAST_METAR_REFRESH_AT_MS = 0;
-  let LAST_ALOFT_REFRESH_AT_MS = 0;
-  const METAR_REFRESH_MS = 5 * 60 * 1000;
-  const ALOFT_REFRESH_MS = 60 * 60 * 1000;
-  const HEARTBEAT_MS = 60 * 1000;
-  const AUTO_REFRESH_SNAPSHOT_MS = 60 * 1000;
+
 
   function safeString(v){
     return (typeof v === "string" && v.trim()) ? v.trim() : null;
@@ -886,7 +877,7 @@ th, td{
 
     const label = $("clockLocalLabel");
     if (label){
-      label.textContent = preferred ? "Local" : "Local (browser)";
+      label.textContent = preferred ? "Local" : "";
     }
   }
 
@@ -1133,29 +1124,54 @@ th, td{
     else if (hasMetar && !visibility_ok) reasons.push('visibility');
 
     const layeredBases = cloudLayers
-      .map(x => Number(x && x.base_ft_agl))
-      .filter(v => Number.isFinite(v));
+    .map(x => Number(x && x.base_ft_agl))
+    .filter(v => Number.isFinite(v));
     const lowestCloudBase = layeredBases.length ? Math.min(...layeredBases) : null;
+
+    const ceilingLayers = cloudLayers.filter(x =>
+    ['BKN', 'OVC', 'VV'].includes(String(x && x.cover || '').toUpperCase()) &&
+    Number.isFinite(Number(x.base_ft_agl))
+    );
+
+    const scatteredLayers = cloudLayers.filter(x =>
+    ['FEW', 'SCT'].includes(String(x && x.cover || '').toUpperCase()) &&
+    Number.isFinite(Number(x.base_ft_agl))
+    );
+
     const ceilingFtAgl = Number.isFinite(Number(metar.ceiling_ft_agl))
-      ? Number(metar.ceiling_ft_agl)
-      : (cloudLayers
-          .filter(x => ['BKN','OVC','VV'].includes(String(x && x.cover || '').toUpperCase()) && Number.isFinite(Number(x.base_ft_agl)))
-          .map(x => Number(x.base_ft_agl))
-          .sort((a,b) => a-b)[0] ?? null);
-    const effectiveCloudFloor = ceilingFtAgl != null ? ceilingFtAgl : lowestCloudBase;
+    ? Number(metar.ceiling_ft_agl)
+    : (ceilingLayers
+      .map(x => Number(x.base_ft_agl))
+      .sort((a, b) => a - b)[0] ?? null);
+
+    const lowestScatteredBase = scatteredLayers.length
+    ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
+    : null;
+
     const clearSky = !!(cloudSummary && /^(clear|clr|skc|nsc)$/i.test(String(cloudSummary).trim()));
+
     let clouds_ok = false;
+    let clouds_caution = false;
+
     if (hasMetar) {
       if (hazardousWeather) {
         clouds_ok = false;
-      } else if (effectiveCloudFloor != null) {
-        clouds_ok = effectiveCloudFloor >= minCeilingLimit;
+      } else if (ceilingFtAgl != null) {
+        // Only BKN/OVC/VV control hard cloud go/no-go
+        clouds_ok = ceilingFtAgl >= minCeilingLimit;
       } else {
-        clouds_ok = clearSky;
+        // No ceiling present. FEW/SCT alone should not be a hard failure.
+        clouds_ok = clearSky || !!cloudSummary;
+      }
+
+      // Optional caution flag for low scattered/few layers
+      if (!hazardousWeather && ceilingFtAgl == null && lowestScatteredBase != null) {
+        clouds_caution = lowestScatteredBase < minCeilingLimit;
       }
     }
+
     if (hasMetar && hazardousWeather) reasons.push('hazardous weather');
-    else if (hasMetar && !cloudSummary && effectiveCloudFloor == null) reasons.push('missing clouds');
+    else if (hasMetar && !cloudSummary && ceilingFtAgl == null && lowestScatteredBase == null) reasons.push('missing clouds');
     else if (hasMetar && !clouds_ok) reasons.push('clouds');
 
     const da_ok = hasMetar && (densityAlt != null) && (maxDensityAlt == null || densityAlt <= maxDensityAlt);
@@ -1230,10 +1246,14 @@ th, td{
         detail: visSm == null ? 'Unavailable' : `${Number.isInteger(visSm) ? Math.round(visSm) : visSm.toFixed(1)} sm / min ${minVisibilitySm}`,
       },
       clouds: {
-        status: clouds_ok ? 'good' : 'no_go',
+        status: hazardousWeather
+          ? 'no_go'
+          : (!clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good')),
         detail:
           ((cloudSummary || 'Unavailable') +
-          (effectiveCloudFloor != null ? ` / min ${Math.round(minCeilingLimit)} ft` : '') +
+          (ceilingFtAgl != null ? ` / ceiling ${Math.round(ceilingFtAgl)} ft` : '') +
+          (lowestScatteredBase != null && ceilingFtAgl == null ? ` / lowest SCT-FEW ${Math.round(lowestScatteredBase)} ft` : '') +
+          ` / min ${Math.round(minCeilingLimit)} ft` +
           (hazardousWeatherLabel ? ` / ${hazardousWeatherLabel}` : '')),
       },
       density_altitude: {
@@ -1518,8 +1538,18 @@ th, td{
   }
 
   async function apiGet(path){
-    const r = await fetch(API + path, {cache:"no-store"});
-    return await r.json();
+    // 20-second timeout; returns null on any network or parse failure.
+    const controller = new AbortController();
+    const tid = window.setTimeout(() => controller.abort(), 20000);
+    try {
+      const r = await fetch(API + path, { cache: "no-store", signal: controller.signal });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch(_) {
+      return null;
+    } finally {
+      window.clearTimeout(tid);
+    }
   }
 
   async function apiPost(path, obj){
@@ -1643,49 +1673,26 @@ th, td{
 
   }
 
-  async function refreshSnapshot(reason = "manual"){
-    const nowMs = Date.now();
-    LAST_REFRESH_AT_MS = nowMs;
-
-    const forceReasons = new Set([
-      "manual",
-      "startup",
-      "recover",
-      "dz-change",
-      "profile-change",
-      "save-profile",
-      "delete-profile"
-    ]);
-
-    const params = new URLSearchParams();
-    params.set("reason", reason);
-    if (forceReasons.has(reason)) params.set("force", "1");
-
-    const snap = await apiGet("/snapshot.json?" + params.toString());
+  // ── Full snapshot refresh ────────────────────────────────────────────────
+  // Called on: init, DZ change, profile change, save profile, manual button.
+  // Fetches everything and updates all panels including Windy and Radar.
+  // Also resets the DZ/profile dropdowns to match server state.
+  async function refreshSnapshot(reason){
+    const snap = await apiGet("/snapshot.json?reason=" + encodeURIComponent(reason) + "&force=1");
     if (!snap || !snap.ok){
       $("goText").textContent = "NO GO";
       $("goText").className = "big bad";
-      $("reasonBadge").innerHTML = "<strong>Reasons:</strong> " + ((snap && snap.error) || "snapshot failed");
-      return;
+      $("reasonBadge").innerHTML = "<strong>Reasons:</strong> " + ((snap && snap.error) || "server unreachable");
+      return false;
     }
-
-    if (snap.metar && Number.isFinite(Number(snap.metar.fetched_unix))) {
-      LAST_METAR_REFRESH_AT_MS = Number(snap.metar.fetched_unix) * 1000;
-    }
-    if (snap.aloft && Number.isFinite(Number(snap.aloft.fetched_unix))) {
-      LAST_ALOFT_REFRESH_AT_MS = Number(snap.aloft.fetched_unix) * 1000;
-    }
-
     setDecisionUI(snap);
     setSurfaceUI(snap);
     setWeatherRiskUI(snap);
     setAloftUI(snap);
     setVisualUI(snap);
     setLimitsUI(snap);
-
     if (snap.active_code){
       $("dzSelect").value = snap.active_code;
-
       if (snap.active_code !== CURRENT_DZ_CODE){
         setClockDZ(snap.active_code);
         flashClock();
@@ -1694,80 +1701,66 @@ th, td{
     if (snap.active_profile_id){
       $("profileSelect").value = snap.active_profile_id;
     }
+    return true;
   }
 
-
-  function clearAutoRefreshTimers(){
-    if (AUTO_REFRESH_TIMER){
-      window.clearTimeout(AUTO_REFRESH_TIMER);
-      AUTO_REFRESH_TIMER = null;
-    }
-    if (AUTO_REFRESH_HEARTBEAT){
-      window.clearInterval(AUTO_REFRESH_HEARTBEAT);
-      AUTO_REFRESH_HEARTBEAT = null;
-    }
+  // ── METAR-only refresh ────────────────────────────────────────────────────
+  // Called by the 5-minute timer. Only re-fetches METAR from the source and
+  // updates the decision/surface/weather panels. Never touches dropdowns,
+  // Windy, or Radar.
+  async function refreshMetar(){
+    const snap = await apiGet("/snapshot.json?reason=metar-timer&force_metar=1");
+    if (!snap || !snap.ok) return;
+    setDecisionUI(snap);
+    setSurfaceUI(snap);
+    setWeatherRiskUI(snap);
   }
 
-  function msUntilNextBoundary(periodMs){
-    const now = Date.now();
-    const next = Math.ceil(now / periodMs) * periodMs;
-    const delta = Math.max(1000, next - now + 250);
-    return delta;
+  // ── Aloft-only refresh ────────────────────────────────────────────────────
+  // Called at the top of each hour. Only re-fetches winds aloft and updates
+  // the aloft and decision panels. Never touches dropdowns, Windy, or Radar.
+  async function refreshAloft(){
+    const snap = await apiGet("/snapshot.json?reason=aloft-timer&force_aloft=1");
+    if (!snap || !snap.ok) return;
+    setDecisionUI(snap);
+    setAloftUI(snap);
   }
 
-  function msUntilNextRefresh(){
-    return msUntilNextBoundary(AUTO_REFRESH_SNAPSHOT_MS);
+  // ── Background timers ─────────────────────────────────────────────────────
+  // METAR: every 5 minutes (simple interval — no boundary alignment needed).
+  // Aloft: at the next top-of-hour, then every 60 minutes after that.
+  // These are started once at page load and run for the lifetime of the page.
+
+  function startMetarTimer(){
+    window.setInterval(async () => {
+      try { await refreshMetar(); } catch(_) {}
+    }, 5 * 60 * 1000);
   }
 
-  async function autoRefreshDue(reason = "timer"){
-    await refreshSnapshot(reason === "manual" ? "manual" : "auto");
-  }
-
-  function scheduleAutoRefresh(){
-    clearAutoRefreshTimers();
-
-    const arm = () => {
-      const waitMs = msUntilNextRefresh();
-      AUTO_REFRESH_TIMER = window.setTimeout(async () => {
-        try {
-          await autoRefreshDue("timer");
-        } catch {}
-        arm();
-      }, waitMs);
-    };
-
-    arm();
-
-    AUTO_REFRESH_HEARTBEAT = window.setInterval(async () => {
-      try {
-        await autoRefreshDue("heartbeat");
-      } catch {}
-    }, HEARTBEAT_MS);
-  }
-
-  async function recoverRefresh(reason){
-    try {
-      await refreshSnapshot(reason);
-    } catch {}
-    scheduleAutoRefresh();
+  function startAloftTimer(){
+    const msPerHour = 60 * 60 * 1000;
+    const msUntilNextHour = msPerHour - (Date.now() % msPerHour) + 500;
+    window.setTimeout(async () => {
+      try { await refreshAloft(); } catch(_) {}
+      window.setInterval(async () => {
+        try { await refreshAloft(); } catch(_) {}
+      }, msPerHour);
+    }, msUntilNextHour);
   }
 
   // --- Events ---
   $("refreshBtn").addEventListener("click", async () => {
     await refreshSnapshot("manual");
-    scheduleAutoRefresh();
   });
 
-  $("exitBtn").addEventListener("click", async () => {
-    try {
-      await fetch(API + "/exit", { method: "GET", cache: "no-store" });
-      return;
-    } catch {}
-    try {
-      window.location.href = "app://exit";
-    } catch {
+  $("exitBtn").addEventListener("click", () => {
+    // Fire-and-forget — don't await. The server calls os._exit(0) after
+    // flushing the response, which kills the Electron process/window.
+    // window.close() is a belt-and-suspenders fallback.
+    try { fetch(API + "/exit", { method: "GET", cache: "no-store" }).catch(() => {}); } catch {}
+    window.setTimeout(() => {
       try { window.close(); } catch {}
-    }
+    }, 300);
   });
 
   // Limits modal toggle (keeps main layout clean)
@@ -1805,15 +1798,11 @@ th, td{
     await apiPost("/set_dz", {code: newCode});
     await loadStatus();
     await refreshSnapshot("dz-change");
-    // Restart manifest rotation when DZ changes
-    startManifestRotation();
-    scheduleAutoRefresh();
   });
 
   $("profileSelect").addEventListener("change", async (e) => {
     await apiPost("/set_profile", {profile_id: e.target.value});
     await refreshSnapshot("profile-change");
-    scheduleAutoRefresh();
   });
 
   $("saveProfileBtn").addEventListener("click", async () => {
@@ -1858,245 +1847,56 @@ th, td{
     } else {
       await loadProfiles();
       await refreshSnapshot("save-profile");
-      scheduleAutoRefresh();
-      // (No need to restart manifest rotation here; active DZ has not changed)
     }
 
   });
 
   // --- Init ---
+  // The clock and both data timers start immediately and run for the life of
+  // the page — they are not affected by whether the server is reachable yet.
+  startClock();
+  startMetarTimer();
+  startAloftTimer();
+
+  // tryConnect() does the initial server handshake. It retries every 15 s
+  // until it succeeds so a slow-starting server is handled automatically.
   (async function init(){
-    try{
-      await loadStatus();
-      const dzs = await loadDZs();
-      await loadProfiles();
-
-      // choose current active dz if server has one
+    async function tryConnect(){
       const st = await apiGet("/status.json");
-      if (st && st.active_code){
-        $("dzSelect").value = st.active_code;
-        CURRENT_DZ_CODE = st.active_code;
+      if (!st || !st.ok) return false;
+      // Server is up — load DZ list, profiles, then full snapshot.
+      await loadStatus();
+      await loadDZs();
+      await loadProfiles();
+      const status = await apiGet("/status.json");
+      if (status && status.active_code){
+        $("dzSelect").value = status.active_code;
+        CURRENT_DZ_CODE = status.active_code;
       }
-
-      // clock: prefer DZ-local (if we have tz metadata), fallback to browser local
       setClockDZ(CURRENT_DZ_CODE || $("dzSelect").value);
-      startClock();
-
-      await refreshSnapshot("init");
-
-      // Start manifest rotation after initial load
-      startManifestRotation();
-
-      scheduleAutoRefresh();
-
-      window.addEventListener("focus", () => { recoverRefresh("focus"); });
-      window.addEventListener("pageshow", () => { recoverRefresh("pageshow"); });
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) recoverRefresh("visible");
-      });
-      window.addEventListener("online", () => { recoverRefresh("online"); });
-    }catch(e){
-      console.error("init failed", e);
-      $("statusText").textContent = "Load error: " + ((e && e.message) ? e.message : e);
-      $("goText").textContent = "NO GO";
-      $("goText").className = "big bad";
-      $("reasonBadge").innerHTML = "<strong>Reasons:</strong> server unreachable";
+      return await refreshSnapshot("init");
     }
+
+    async function attempt(){
+      const ok = await tryConnect();
+      if (!ok){
+        $("statusText").textContent = "Connecting to server...";
+        $("goText").textContent = "NO GO";
+        $("goText").className = "big bad";
+        $("reasonBadge").innerHTML = "<strong>Reasons:</strong> server unreachable";
+        window.setTimeout(attempt, 15000);
+      }
+    }
+
+    await attempt();
   })();
 
-  // Manifest rotation intentionally left disabled on this branch.
-  function startManifestRotation() {}
-
-  // --- Manifest rotation ---
-  // Rotates between showing the dashboard and the Burble manifest for the active DZ.
-  // If the active DZ does not have a Burble URL, the rotation stops and the dashboard remains visible.
-  let manifestURL = null;
-  let manifestTimer = null;
-  let showDashboard = true;
-  // We no longer open a separate popup window for the manifest.  Instead, we
-  // display it in an overlay <webview> element (manifestWebview).  A
-  // <webview> runs in its own renderer process and behaves like an embedded
-  // browser tab.  It is allowed to navigate cross-origin and maintain
-  // cookies, which means the Burble handshake and redirect sequence will
-  // complete correctly.  When the manifest is shown, the webview covers
-  // the entire dashboard; when hidden, the dashboard is visible.
-  const MANIFEST_DURATION_MS = 30000; // 30 seconds showing the manifest
-  const DASH_DURATION_MS = 30000;     // 30 seconds showing the dashboard
-
-  // Refresh the manifestURL based on the current DZ. Called whenever the active DZ changes.
-  // We prefer the explicit burble_public_url from the DZ metadata. If that is
-  // missing or empty, fall back to constructing a URL from the burble_dz_id.
-  function updateManifestURL() {
-    const dz = getDzMeta(CURRENT_DZ_CODE);
-    // Determine which URL to display.  We always call the proxy_manifest
-    // endpoint on our feed server so that the remote Burble page is fetched
-    // server-side with redirect/cookie handling and a <base> tag injected.  If
-    // an explicit burble_public_url is provided, use it; otherwise construct
-    // from burble_dz_id.  If neither is available, manifestURL will be null.
-    let rawUrl = null;
-    if (dz && dz.burble_public_url && String(dz.burble_public_url).trim()) {
-      rawUrl = String(dz.burble_public_url).trim();
-    } else if (dz && dz.burble_dz_id) {
-      rawUrl = `https://dzm.burblesoft.com/jumper_manifest_public?dz_id=${encodeURIComponent(dz.burble_dz_id)}`;
-    }
-    if (rawUrl) {
-      // For webview, we use the Burble URL directly.  The webview runs in
-      // its own process and can navigate cross-origin, so the handshake and
-      // redirect happen in the guest instance.  Do not proxy the URL here.
-      manifestURL = rawUrl;
-    } else {
-      manifestURL = null;
-    }
-    // Log the final URL for debugging (appears in the console)
-    try {
-      console.log("updateManifestURL:", {
-        currentDZ: CURRENT_DZ_CODE,
-        rawUrl: rawUrl,
-        manifestURL: manifestURL
-      });
-    } catch (e) {}
-  }
-
-  // Toggle between showing the dashboard and the manifest page.  We use a
-  // full-screen overlay iframe (#manifestFrame) to display the proxied
-  // manifest.  When showDashboard is true, the iframe is hidden and the
-  // dashboard is visible.  When false, the iframe is shown and its src is
-  // set to manifestURL.  Rotation is controlled by timeouts.
-  function toggleManifest() {
-    // Grab the manifest webview (not an iframe).  The manifestWebview element is
-    // defined near the end of the document and covers the dashboard when
-    // visible.  We manage its visibility and src property here.
-    const frame = document.getElementById("manifestWebview");
-    if (!manifestURL) {
-      // No manifest available: ensure the iframe is hidden and stop rotation.
-      if (frame) {
-        frame.style.display = "none";
-        frame.src = "";
-      }
-      showDashboard = true;
-      return;
-    }
-    if (showDashboard) {
-      // Switch from dashboard to manifest: show the iframe and load the URL
-      try {
-        console.log("toggleManifest: showing manifest", {
-          currentDZ: CURRENT_DZ_CODE,
-          url: manifestURL
-        });
-      } catch (e) {}
-      if (frame) {
-        frame.src = manifestURL;
-        frame.style.display = "block";
-      }
-      showDashboard = false;
-      manifestTimer = window.setTimeout(toggleManifest, MANIFEST_DURATION_MS);
-    } else {
-      // Switch back to dashboard: hide the iframe and clear its src
-      try {
-        console.log("toggleManifest: hiding manifest, returning to dashboard");
-      } catch (e) {}
-      if (frame) {
-        frame.style.display = "none";
-        frame.src = "";
-      }
-      showDashboard = true;
-      manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
-    }
-  }
-
-  // Start or restart the manifest rotation loop.
-  function startManifestRotation() {
-    if (manifestTimer) {
-      window.clearTimeout(manifestTimer);
-      manifestTimer = null;
-    }
-    // Refresh the manifest URL for the current DZ
-    updateManifestURL();
-    // Start with the dashboard visible
-    showDashboard = true;
-    const frame = document.getElementById("manifestWebview");
-    // Close and hide any previously loaded manifest in the iframe
-    if (frame) {
-      frame.style.display = "none";
-      frame.src = "";
-    }
-    // If there's no manifest URL for the active DZ, leave the dashboard visible and stop rotation
-    if (!manifestURL) {
-      return;
-    }
-    // Attach logging handlers to the iframe exactly once. These handlers
-    // report success or failure of loading the manifest. They help diagnose
-    // 404s or other problems. The _logListenersAttached flag prevents
-    // adding duplicate listeners on subsequent calls.
-    if (frame && !frame._logListenersAttached) {
-      // Attach logging handlers to the webview exactly once.  The
-      // 'did-finish-load' event fires when the page and all resources
-      // finish loading, and 'did-fail-load' fires on errors.  These help
-      // diagnose 404s or other problems.  We only attach once to avoid
-      // duplicate logs.
-      frame.addEventListener("did-finish-load", function() {
-        try {
-          console.log("manifest webview loaded", {
-            currentDZ: CURRENT_DZ_CODE,
-            url: manifestURL
-          });
-        } catch (e) {}
-      });
-      frame.addEventListener("did-fail-load", function(event) {
-        try {
-          console.error("manifest webview error", {
-            currentDZ: CURRENT_DZ_CODE,
-            url: manifestURL,
-            errorCode: event.errorCode,
-            errorDescription: event.errorDescription
-          });
-        } catch (e) {}
-      });
-      frame._logListenersAttached = true;
-    }
-    // Schedule the first switch to the manifest after showing the dashboard
-    manifestTimer = window.setTimeout(toggleManifest, DASH_DURATION_MS);
-  }
-
-
-  const __origSetSurfaceUI = setSurfaceUI;
-  setSurfaceUI = function(snapshot){
-    __origSetSurfaceUI(snapshot);
-    const m = snapshot.metar || {};
-    const tf = m.temp_f != null ? `${m.temp_f}°F` : '—';
-    const tc = m.temp_c != null ? `${m.temp_c}°C` : '—';
-    $("metarTemp").textContent = `${tf} / ${tc}`;
-  };
-
-
-
-  // Harden init: do not treat every render/layout issue as a server outage.
-  const __origRefreshSnapshot = refreshSnapshot;
-  refreshSnapshot = async function(){
-    try {
-      return await __origRefreshSnapshot();
-    } catch (e) {
-      console.error('refreshSnapshot failed', e);
-      const st = $("statusText");
-      if (st) st.textContent = 'Render error: ' + (e && e.message ? e.message : e);
-      throw e;
-    }
-  };
-
   window.addEventListener('error', (e) => {
-    try { console.error('window error', e.error || e.message || e); } catch (_) {}
+    try { console.error('window error', e.error || e.message || e); } catch(_) {}
   });
 
 </script>
-<!-- The manifestWebview displays the Burble manifest when rotation is active.
-     It covers the entire viewport and is hidden when not in use.  Using a
-     <webview> instead of an <iframe> allows cross-origin navigation and
-     cookie storage. -->
-<webview id="manifestWebview"
-         style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; display:none; z-index:99999;"
-         allowpopups
-         useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"
-         ></webview>
+
 <div style="display:none" aria-hidden="true">
   <span id="metric_surface"></span><span id="metric_gust"></span><span id="metric_aloft"></span><span id="metric_shear"></span>
 </div>

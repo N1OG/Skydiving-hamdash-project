@@ -30,7 +30,10 @@ import argparse
 import datetime as _dt
 import json
 import math
+import os
 import re
+import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -1207,12 +1210,15 @@ class Handler(BaseHTTPRequestHandler):
             lon = prof.get("lon")
             icao = prof.get("icao")
             radar_station = prof.get("radar_station") or prof.get("radar") or ""
-            force = False
-            if "force" in q and q["force"]:
-                force = str(q["force"][0]).strip().lower() in ("1", "true", "yes", "y", "on")
+            def _bool_param(name: str) -> bool:
+                return bool(q.get(name) and str(q[name][0]).strip().lower() in ("1", "true", "yes", "y", "on"))
 
-            metar = _cached_metar(str(icao or ""), force=force)
-            aloft = _cached_aloft(lat, lon, force=force) if (dz_ok and lat is not None and lon is not None) else {
+            force_all   = _bool_param("force")
+            force_metar = force_all or _bool_param("force_metar")
+            force_aloft = force_all or _bool_param("force_aloft")
+
+            metar = _cached_metar(str(icao or ""), force=force_metar)
+            aloft = _cached_aloft(lat, lon, force=force_aloft) if (dz_ok and lat is not None and lon is not None) else {
                 "ok": False, "source": "Open-Meteo", "error": f"incomplete DZ metadata ({', '.join(dz_missing)})", "levels": [], "fetched_unix": int(time.time())
             }
 
@@ -1344,6 +1350,14 @@ class Handler(BaseHTTPRequestHandler):
                     status = 502
                 self._send_json(status, {"ok": False, "error": f"proxy fetch failed ({err_msg})"})
                 return
+
+        if path == "/exit":
+            self._send_json(200, {"ok": True, "message": "shutting down"})
+            def _shutdown():
+                time.sleep(0.2)
+                os._exit(0)
+            threading.Thread(target=_shutdown, daemon=True).start()
+            return
 
         self._send_json(404, {"ok": False, "error": f"unknown path {path}"})
 
