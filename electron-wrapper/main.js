@@ -137,7 +137,7 @@ function ensureRuntimeFiles() {
       path.join(srcConfigDir, "active_dz.json"),
       path.join(runtimeConfigDir, "active_dz.json")
     );
-    copyFileIfMissing(
+    syncManagedConfigFile(
       path.join(srcConfigDir, "jump_profiles.json"),
       path.join(runtimeConfigDir, "jump_profiles.json")
     );
