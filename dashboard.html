@@ -1717,11 +1717,37 @@ th, td{
   }
 
   // ── Aloft-only refresh ────────────────────────────────────────────────────
-  // Called at the top of each hour. Only re-fetches winds aloft and updates
-  // the aloft and decision panels. Never touches dropdowns, Windy, or Radar.
-  async function refreshAloft(){
+  // Called at the top of each hour. Fetches winds aloft and updates the aloft
+  // and decision panels. Never touches dropdowns, Windy, or Radar.
+  //
+  // If the aloft data comes back failed (snap.aloft.ok === false), it retries
+  // up to MAX_ALOFT_RETRIES times with a ALOFT_RETRY_MS delay between each.
+  // After that it gives up and waits for the next scheduled hourly tick.
+  const MAX_ALOFT_RETRIES = 3;
+  const ALOFT_RETRY_MS    = 10 * 1000; // 10 seconds between retries
+
+  async function refreshAloft(retryCount = 0){
     const snap = await apiGet("/snapshot.json?reason=aloft-timer&force_aloft=1");
-    if (!snap || !snap.ok) return;
+
+    // Network/server failure — snap is null or snap.ok (the snapshot itself) is false.
+    if (!snap || !snap.ok){
+      if (retryCount < MAX_ALOFT_RETRIES){
+        window.setTimeout(() => refreshAloft(retryCount + 1), ALOFT_RETRY_MS);
+      }
+      return;
+    }
+
+    // Snapshot arrived but aloft data itself failed.
+    if (!snap.aloft || !snap.aloft.ok){
+      setDecisionUI(snap);  // update decision panel so NO-GO reason is shown
+      setAloftUI(snap);     // show the FAIL badge with the error message
+      if (retryCount < MAX_ALOFT_RETRIES){
+        window.setTimeout(() => refreshAloft(retryCount + 1), ALOFT_RETRY_MS);
+      }
+      return;
+    }
+
+    // Success.
     setDecisionUI(snap);
     setAloftUI(snap);
   }
