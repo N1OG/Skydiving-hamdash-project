@@ -706,6 +706,7 @@ th, td{
           <div class="breakRow"><div class="breakLabel">Visibility</div><div class="breakState info" id="breakVisibilityState">—</div><div class="breakDetail" id="breakVisibilityDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Clouds</div><div class="breakState info" id="breakCloudsState">—</div><div class="breakDetail" id="breakCloudsDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Density Alt</div><div class="breakState info" id="breakDAState">—</div><div class="breakDetail" id="breakDADetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Aloft</div><div class="breakState info" id="breakAloftState">—</div><div class="breakDetail" id="breakAloftDetail">—</div></div>
         </div>
       </div>
     </div>
@@ -783,25 +784,60 @@ th, td{
   </div>
   <dialog id="limitsDlg" class="limitsDlg">
     <div class="limitsHead">
-      <div class="limitsTitle">Limits · Active Profile</div>
+      <div>
+        <div class="limitsTitle">Jump Profile Limits</div>
+        <div class="small" id="limitsProfileName" style="margin-top:2px; color:var(--muted);">—</div>
+      </div>
       <button id="limitsCloseBtn" class="iconBtn" title="Close">✕</button>
     </div>
 
     <div class="limitsBody">
-      <div class="grid2">
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Profile Name</div>
+      <div style="margin-bottom:14px;">
+        <input id="lim_profile_name" type="text" placeholder="Profile name"
+          style="width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); color:var(--text); border-radius:10px; padding:7px 10px; outline:none; box-sizing:border-box;">
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Surface Wind</div>
+      <div class="grid2" style="margin-bottom:14px;">
         <div class="kv"><div class="k">Max surface wind (kt)</div><div class="v"><input id="lim_surface" type="number" min="0" step="1" style="width:110px"></div></div>
+        <div class="kv"><div class="k">Max gust (kt)</div><div class="v"><input id="lim_gust" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max gust spread (kt)</div><div class="v"><input id="lim_gust_spread" type="number" min="0" step="1" style="width:110px"></div></div>
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Sky &amp; Visibility</div>
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="kv"><div class="k">Min visibility (sm)</div><div class="v"><input id="lim_visibility" type="number" min="0" step="0.5" style="width:110px" placeholder="3"></div></div>
+        <div class="kv"><div class="k">Min ceiling (ft AGL)</div><div class="v"><input id="lim_ceiling" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Temperature</div>
+      <div class="grid2" style="margin-bottom:14px;">
         <div class="kv"><div class="k">Min temp (°F)</div><div class="v"><input id="lim_temp_min" type="number" step="1" style="width:110px" placeholder="—"></div></div>
-          <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
+        <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Winds Aloft</div>
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="kv"><div class="k">Max aloft ≤14k (kt)</div><div class="v"><input id="lim_aloft" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max shear ≤14k (kt)</div><div class="v"><input id="lim_shear" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max dir change (deg)</div><div class="v"><input id="lim_dir" type="number" min="0" step="1" style="width:110px"></div></div>
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Jump Profile</div>
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="kv"><div class="k">Max density alt (ft)</div><div class="v"><input id="lim_density_alt" type="number" min="0" step="100" style="width:110px"></div></div>
         <div class="kv"><div class="k">Planned exit alt (MSL ft)</div><div class="v"><input id="lim_exit_alt" type="number" min="0" step="100" style="width:110px" placeholder="13500"></div></div>
         <div class="kv"><div class="k">Deployment alt (AGL ft)</div><div class="v"><input id="lim_deploy_alt" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
       </div>
 
-      <div class="row" style="margin-top:12px; justify-content:space-between;">
-        <button id="saveProfileBtn">Save to this profile</button>
-        <span class="small">Saved on the server and becomes the active limits immediately.</span>
+      <div class="row" style="margin-top:4px; justify-content:space-between; align-items:center;">
+        <div class="row" style="gap:8px;">
+          <button id="saveProfileBtn">Save</button>
+          <button id="resetProfileBtn" style="background:rgba(255,255,255,.06);">Reset to Saved</button>
+        </div>
+        <span class="small">Changes take effect immediately on save.</span>
       </div>
     </div>
   </dialog>
@@ -1123,148 +1159,56 @@ th, td{
     if (hasMetar && visSm == null) reasons.push('missing visibility');
     else if (hasMetar && !visibility_ok) reasons.push('visibility');
 
-    // ── Cloud layer classification ────────────────────────────────────────────
-    // Separate layers by operational meaning before any decision logic runs.
-
-    // All numeric bases (used for lowestCloudBase display).
     const layeredBases = cloudLayers
-      .map(x => Number(x && x.base_ft_agl))
-      .filter(v => Number.isFinite(v));
+    .map(x => Number(x && x.base_ft_agl))
+    .filter(v => Number.isFinite(v));
     const lowestCloudBase = layeredBases.length ? Math.min(...layeredBases) : null;
 
-    // VV = sky obscured (fog, smoke, heavy precip). Separate hard-stop category.
-    // Treated more severely than BKN/OVC — obscuration means no visual reference.
-    const vvLayers = cloudLayers.filter(x =>
-      String(x && x.cover || '').toUpperCase() === 'VV' &&
-      x.base_ft_agl != null && Number.isFinite(Number(x.base_ft_agl))
-    );
-    const hasObscuration = vvLayers.length > 0;
-    const vvAgl = hasObscuration
-      ? Math.min(...vvLayers.map(x => Number(x.base_ft_agl)))
-      : null;
-
-    // BKN/OVC form ceilings. VV excluded — it has its own hard stop above.
     const ceilingLayers = cloudLayers.filter(x =>
-      ['BKN', 'OVC'].includes(String(x && x.cover || '').toUpperCase()) &&
-      x.base_ft_agl != null && Number.isFinite(Number(x.base_ft_agl))
+    ['BKN', 'OVC', 'VV'].includes(String(x && x.cover || '').toUpperCase()) &&
+    Number.isFinite(Number(x.base_ft_agl))
     );
 
-    // FEW/SCT: advisory layers — no ceiling, but can affect spotting margin.
     const scatteredLayers = cloudLayers.filter(x =>
-      ['FEW', 'SCT'].includes(String(x && x.cover || '').toUpperCase()) &&
-      x.base_ft_agl != null && Number.isFinite(Number(x.base_ft_agl))
+    ['FEW', 'SCT'].includes(String(x && x.cover || '').toUpperCase()) &&
+    Number.isFinite(Number(x.base_ft_agl))
     );
 
-    // CB/TCU suffix on ANY layer = convective activity → hard stop.
-    const hasConvectiveLayers = cloudLayers.some(x => x && x.convective === true);
-
-    // ── Ceiling determination ──────────────────────────────────────────────────
-    // BUG FIX: Number(null) === 0 and isFinite(0) === true, which was causing
-    // null ceiling_ft_agl to be parsed as 0 ft → always NO-GO on clear days.
-    // Guard: only use the server value if it is explicitly non-null AND finite.
-    const serverCeilingAgl =
-      (metar != null && metar.ceiling_ft_agl != null &&
-       Number.isFinite(Number(metar.ceiling_ft_agl)))
-        ? Number(metar.ceiling_ft_agl)
-        : null;
-
-    // Derive from parsed BKN/OVC layers if server didn't supply it.
-    const layerCeilingAgl = ceilingLayers.length
-      ? Math.min(...ceilingLayers.map(x => Number(x.base_ft_agl)))
-      : null;
-
-    const ceilingFtAgl = serverCeilingAgl ?? layerCeilingAgl;
+    const ceilingFtAgl = Number.isFinite(Number(metar.ceiling_ft_agl))
+    ? Number(metar.ceiling_ft_agl)
+    : (ceilingLayers
+      .map(x => Number(x.base_ft_agl))
+      .sort((a, b) => a - b)[0] ?? null);
 
     const lowestScatteredBase = scatteredLayers.length
-      ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
-      : null;
+    ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
+    : null;
 
-    // ── Clear-sky detection ────────────────────────────────────────────────────
-    // Three independent signals — any one is sufficient to declare clear sky:
-    //   1. Server cloud_summary explicitly says CLR/SKC/NSC/CAVOK.
-    //   2. No cloud layers at all in the METAR (ASOS CLR reporting with 0 layers).
-    // Both must also have no VV obscuration.
-    const clearSkyByText = !!(
-      cloudSummary &&
-      /^(clear|clr|skc|nsc|cavok)$/i.test(String(cloudSummary).trim())
-    );
-    const clearSky =
-      !hasObscuration && (clearSkyByText || cloudLayers.length === 0);
+    const clearSky = !!(cloudSummary && /^(clear|clr|skc|nsc)$/i.test(String(cloudSummary).trim()));
 
-    // ── Two-stage cloud decision ───────────────────────────────────────────────
-    //
-    // Stage 1 — Hard stops (legal and safety blockers). Any one → NO-GO.
-    //   A. Sky obscured (VV): visibility < 0, no ground reference, no ops.
-    //   B. Convective layer (CB/TCU) on any cover type: thunderstorm risk.
-    //   C. Other hazardous weather (TS, SQ, DS, SS, FC from METAR wx groups).
-    //   D. BKN/OVC ceiling below the configured minimum AGL.
-    //
-    // Stage 2 — Advisory cautions. GO, but flagged in the breakdown panel.
-    //   A. Ceiling present but within 500 ft above the minimum (tight margin).
-    //   B. SCT/FEW layer below deployment altitude (spotting margin reduced).
-    //
-    // Default: GO. Hard stops set clouds_ok = false. Cautions don't block GO.
-
-    let clouds_ok   = true;
+    let clouds_ok = false;
     let clouds_caution = false;
-    let cloudsHardStopReason = null;
-    let cloudsCautionReason  = null;
 
     if (hasMetar) {
-      // ── Stage 1A: sky obscured ─────────────────────────────────────────────
-      if (hasObscuration) {
+      if (hazardousWeather) {
         clouds_ok = false;
-        cloudsHardStopReason =
-          `sky obscured — vertical visibility ${Math.round(vvAgl)} ft AGL`;
-
-      // ── Stage 1B/C: convective or hazardous weather ────────────────────────
-      } else if (hasConvectiveLayers || hazardousWeather) {
-        clouds_ok = false;
-        const parts = [];
-        if (hasConvectiveLayers) parts.push('convective cloud (CB/TCU)');
-        if (hazardousWeather && hazardousWeatherLabel) parts.push(hazardousWeatherLabel);
-        else if (hazardousWeather) parts.push('hazardous weather');
-        cloudsHardStopReason = parts.join(' / ');
-
-      // ── Stage 1D: BKN/OVC ceiling below minimum ────────────────────────────
-      } else if (ceilingFtAgl != null && ceilingFtAgl < minCeilingLimit) {
-        clouds_ok = false;
-        cloudsHardStopReason =
-          `ceiling ${Math.round(ceilingFtAgl)} ft AGL — ` +
-          `below ${Math.round(minCeilingLimit)} ft minimum`;
-
-      // ── Stage 2: no hard stop — evaluate advisory cautions ─────────────────
+      } else if (ceilingFtAgl != null) {
+        // Only BKN/OVC/VV control hard cloud go/no-go
+        clouds_ok = ceilingFtAgl >= minCeilingLimit;
       } else {
-        clouds_ok = true;
+        // No ceiling present. FEW/SCT alone should not be a hard failure.
+        clouds_ok = clearSky || !!cloudSummary;
+      }
 
-        // 2A: ceiling present but within 500 ft of the minimum.
-        if (ceilingFtAgl != null && (ceilingFtAgl - minCeilingLimit) < 500) {
-          clouds_caution = true;
-          cloudsCautionReason =
-            `ceiling ${Math.round(ceilingFtAgl)} ft AGL — ` +
-            `within 500 ft of ${Math.round(minCeilingLimit)} ft minimum`;
-        }
-
-        // 2B: SCT/FEW layer below deployment altitude (spotting margin).
-        if (!clouds_caution &&
-            lowestScatteredBase != null &&
-            lowestScatteredBase < deploymentAltAgl) {
-          clouds_caution = true;
-          cloudsCautionReason =
-            `scattered layer at ${Math.round(lowestScatteredBase)} ft AGL — ` +
-            `below deployment altitude ${Math.round(deploymentAltAgl)} ft`;
-        }
+      // Optional caution flag for low scattered/few layers
+      if (!hazardousWeather && ceilingFtAgl == null && lowestScatteredBase != null) {
+        clouds_caution = lowestScatteredBase < minCeilingLimit;
       }
     }
 
-    // Push into overall reasons array. Cautions don't contribute a reason.
-    if (hasMetar && !clouds_ok) {
-      reasons.push(
-        (hasObscuration || hasConvectiveLayers || hazardousWeather)
-          ? 'hazardous weather'
-          : 'ceiling'
-      );
-    }
+    if (hasMetar && hazardousWeather) reasons.push('hazardous weather');
+    else if (hasMetar && !cloudSummary && ceilingFtAgl == null && lowestScatteredBase == null) reasons.push('missing clouds');
+    else if (hasMetar && !clouds_ok) reasons.push('clouds');
 
     const da_ok = hasMetar && (densityAlt != null) && (maxDensityAlt == null || densityAlt <= maxDensityAlt);
     if (hasMetar && densityAlt == null) reasons.push('missing density altitude');
@@ -1338,32 +1282,15 @@ th, td{
         detail: visSm == null ? 'Unavailable' : `${Number.isInteger(visSm) ? Math.round(visSm) : visSm.toFixed(1)} sm / min ${minVisibilitySm}`,
       },
       clouds: {
-        // Status: no_go → caution → good, driven entirely by the two-stage logic.
-        status: !clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good'),
-        detail: (() => {
-          // No METAR: can't assess clouds.
-          if (!hasMetar) return 'No METAR data';
-
-          // Hard stop: display the specific reason computed above.
-          if (!clouds_ok) return cloudsHardStopReason || 'No-go';
-
-          // Advisory caution: display the specific caution reason.
-          if (clouds_caution) return cloudsCautionReason || 'Caution';
-
-          // Clear sky (explicit text or no layers).
-          if (clearSky) {
-            return cloudSummary && !/^null$/i.test(String(cloudSummary))
-              ? cloudSummary
-              : 'Clear';
-          }
-
-          // SCT/FEW only, no ceiling — show layer info, no "min ceiling" noise.
-          const layerDesc = cloudSummary
-            || (lowestScatteredBase != null
-                ? `SCT/FEW at ${Math.round(lowestScatteredBase)} ft AGL`
-                : 'Scattered layers');
-          return `${layerDesc} — no ceiling`;
-        })(),
+        status: hazardousWeather
+          ? 'no_go'
+          : (!clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good')),
+        detail:
+          ((cloudSummary || 'Unavailable') +
+          (ceilingFtAgl != null ? ` / ceiling ${Math.round(ceilingFtAgl)} ft` : '') +
+          (lowestScatteredBase != null && ceilingFtAgl == null ? ` / lowest SCT-FEW ${Math.round(lowestScatteredBase)} ft` : '') +
+          ` / min ${Math.round(minCeilingLimit)} ft` +
+          (hazardousWeatherLabel ? ` / ${hazardousWeatherLabel}` : '')),
       },
       density_altitude: {
         status: da_ok ? 'good' : 'no_go',
@@ -1644,6 +1571,16 @@ th, td{
     $("lim_dir").value = lim.max_dir_change_deg ?? "";
     $("lim_exit_alt").value = lim.planned_exit_altitude_msl_ft ?? "";
     $("lim_deploy_alt").value = lim.deployment_altitude_agl_ft ?? "";
+
+    // Keep the profile name field and subtitle in sync with the active profile.
+    const sel = $("profileSelect");
+    const profileName = sel && sel.selectedOptions[0]
+      ? sel.selectedOptions[0].textContent.replace(" (built-in)", "").trim()
+      : "";
+    const nameInput = $("lim_profile_name");
+    if (nameInput) nameInput.value = profileName;
+    const subtitle = $("limitsProfileName");
+    if (subtitle) subtitle.textContent = profileName || "—";
   }
 
   async function apiGet(path){
@@ -1906,6 +1843,15 @@ th, td{
     if (!dlg || !openBtn || !closeBtn) return;
 
     openBtn.addEventListener("click", () => {
+      // Sync the profile name field whenever the modal opens.
+      const sel = $("profileSelect");
+      const nameInput = $("lim_profile_name");
+      const subtitle = $("limitsProfileName");
+      if (sel && sel.selectedOptions[0]) {
+        const n = sel.selectedOptions[0].textContent.replace(" (built-in)", "").trim();
+        if (nameInput) nameInput.value = n;
+        if (subtitle) subtitle.textContent = n;
+      }
       // showModal gives us a backdrop + focus trap
       if (typeof dlg.showModal === "function") dlg.showModal();
       else dlg.setAttribute("open","open");
@@ -1971,9 +1917,15 @@ th, td{
       if (limits[k] == null) delete limits[k];
     }
 
+    // Use the editable name field if the user changed it, fall back to dropdown.
+    const nameInput = $("lim_profile_name");
+    const profileName = (nameInput && nameInput.value.trim())
+      ? nameInput.value.trim()
+      : $("profileSelect").selectedOptions[0].textContent.replace(" (built-in)", "").trim();
+
     const res = await apiPost("/save_profile", {
       profile_id: pid,
-      name: $("profileSelect").selectedOptions[0].textContent.replace(" (built-in)",""),
+      name: profileName,
       limits
     });
 
@@ -1982,8 +1934,16 @@ th, td{
     } else {
       await loadProfiles();
       await refreshSnapshot("save-profile");
+      // Update the profile name subtitle to reflect any rename.
+      const subtitle = $("limitsProfileName");
+      if (subtitle) subtitle.textContent = profileName;
     }
 
+  });
+
+  // Reset to saved: reload current profile limits from the server without saving.
+  $("resetProfileBtn").addEventListener("click", async () => {
+    await refreshSnapshot("profile-change");
   });
 
   // --- Init ---

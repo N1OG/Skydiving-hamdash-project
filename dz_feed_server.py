@@ -1041,7 +1041,7 @@ def _cached_aloft(lat: Any, lon: Any, force: bool = False) -> Dict[str, Any]:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "dzfeed/v1.1.17"
+    server_version = "dzfeed/v1.1.18"
 
     def _send(self, status: int, body: bytes, content_type: str = "application/json; charset=utf-8") -> None:
         self.send_response(status)
