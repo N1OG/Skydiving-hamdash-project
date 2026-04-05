@@ -1123,56 +1123,122 @@ th, td{
     if (hasMetar && visSm == null) reasons.push('missing visibility');
     else if (hasMetar && !visibility_ok) reasons.push('visibility');
 
+    // ── Cloud analysis ──────────────────────────────────────────────────────
+    // Parse layers by type. VV (vertical visibility/obscuration) is separated
+    // because it is operationally more severe than BKN/OVC.
     const layeredBases = cloudLayers
-    .map(x => Number(x && x.base_ft_agl))
-    .filter(v => Number.isFinite(v));
+      .map(x => Number(x && x.base_ft_agl))
+      .filter(v => Number.isFinite(v));
     const lowestCloudBase = layeredBases.length ? Math.min(...layeredBases) : null;
 
+    // VV = sky obscured. This is a hard stop regardless of altitude — it
+    // means fog, smoke, heavy precip, or similar. Jumpers cannot operate.
+    const vvLayers = cloudLayers.filter(x =>
+      String(x && x.cover || '').toUpperCase() === 'VV' &&
+      Number.isFinite(Number(x.base_ft_agl))
+    );
+    const hasObscuration = vvLayers.length > 0;
+    const vvAgl = hasObscuration ? Math.min(...vvLayers.map(x => Number(x.base_ft_agl))) : null;
+
+    // BKN/OVC form ceilings (excluding VV which is handled separately above).
     const ceilingLayers = cloudLayers.filter(x =>
-    ['BKN', 'OVC', 'VV'].includes(String(x && x.cover || '').toUpperCase()) &&
-    Number.isFinite(Number(x.base_ft_agl))
+      ['BKN', 'OVC'].includes(String(x && x.cover || '').toUpperCase()) &&
+      Number.isFinite(Number(x.base_ft_agl))
     );
 
+    // FEW/SCT are advisory layers — not ceilings, but may affect spotting.
     const scatteredLayers = cloudLayers.filter(x =>
-    ['FEW', 'SCT'].includes(String(x && x.cover || '').toUpperCase()) &&
-    Number.isFinite(Number(x.base_ft_agl))
+      ['FEW', 'SCT'].includes(String(x && x.cover || '').toUpperCase()) &&
+      Number.isFinite(Number(x.base_ft_agl))
     );
 
-    const ceilingFtAgl = Number.isFinite(Number(metar.ceiling_ft_agl))
-    ? Number(metar.ceiling_ft_agl)
-    : (ceilingLayers
-      .map(x => Number(x.base_ft_agl))
-      .sort((a, b) => a - b)[0] ?? null);
+    // Any layer with CB or TCU suffix is convective — hard stop on any cover type.
+    const hasConvectiveLayers = cloudLayers.some(x => x && x.convective === true);
+
+    // Lowest BKN/OVC ceiling in ft AGL. Prefer the server-parsed value if present.
+    const ceilingFtAgl = Number.isFinite(Number(metar && metar.ceiling_ft_agl))
+      ? Number(metar.ceiling_ft_agl)
+      : (ceilingLayers
+          .map(x => Number(x.base_ft_agl))
+          .sort((a, b) => a - b)[0] ?? null);
 
     const lowestScatteredBase = scatteredLayers.length
-    ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
-    : null;
+      ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
+      : null;
 
-    const clearSky = !!(cloudSummary && /^(clear|clr|skc|nsc)$/i.test(String(cloudSummary).trim()));
+    // Clear-sky detection: server flag, explicit clear-sky summary, or no layers at all.
+    // "No layers" from an ASOS/AWOS simply means CLR — not missing data.
+    const clearSkyByText = !!(cloudSummary && /^(clear|clr|skc|nsc|cavok)$/i.test(String(cloudSummary).trim()));
+    const clearSky = clearSkyByText || (cloudLayers.length === 0 && !hasObscuration);
 
-    let clouds_ok = false;
-    let clouds_caution = false;
+    // ── Cloud decision: two-stage (legal hard-stop gate + operational advisory) ──
+    //
+    // Stage 1 — Hard stops (legal / safety blockers):
+    //   • Sky obscured (VV)                    → NO-GO regardless of altitude
+    //   • Convective layer (CB/TCU)            → NO-GO (thunderstorm / severe turbulence)
+    //   • Hazardous wx present (TS, SQ, etc.)  → NO-GO
+    //   • BKN/OVC ceiling below configured min → NO-GO (FAA cloud clearance)
+    //
+    // Stage 2 — Advisory (caution, not a hard block):
+    //   • SCT/FEW layer below deployment alt   → CAUTION (spotting margin reduced)
+    //   • Ceiling within 500 ft of the minimum → CAUTION (tight margin)
+    //
+    // This mirrors actual skydiving decision-making: the hard stops are legal
+    // and safety requirements; the cautions are operational margin calls.
+
+    let clouds_ok = true;          // assume GO; hard stops below set false
+    let clouds_caution = false;    // advisory caution (doesn't block GO)
+    let cloudsHardStopReason = null;   // human-readable reason for hard stop
+    let cloudsCautionReason = null;    // human-readable reason for caution
 
     if (hasMetar) {
-      if (hazardousWeather) {
+      // ── Hard stop 1: sky obscured (VV) ────────────────────────────────────
+      if (hasObscuration) {
         clouds_ok = false;
-      } else if (ceilingFtAgl != null) {
-        // Only BKN/OVC/VV control hard cloud go/no-go
-        clouds_ok = ceilingFtAgl >= minCeilingLimit;
-      } else {
-        // No ceiling present. FEW/SCT alone should not be a hard failure.
-        clouds_ok = clearSky || !!cloudSummary;
+        cloudsHardStopReason = `sky obscured — vertical visibility ${vvAgl} ft`;
       }
+      // ── Hard stop 2: convective cloud layer (CB/TCU) ──────────────────────
+      else if (hasConvectiveLayers || hazardousWeather) {
+        clouds_ok = false;
+        const convLabel = hasConvectiveLayers ? 'convective cloud (CB/TCU)' : null;
+        const wxLabel = hazardousWeather ? hazardousWeatherLabel : null;
+        cloudsHardStopReason = [convLabel, wxLabel].filter(Boolean).join(' / ') || 'hazardous weather';
+      }
+      // ── Hard stop 3: BKN/OVC ceiling below the legal minimum ──────────────
+      else if (ceilingFtAgl != null && ceilingFtAgl < minCeilingLimit) {
+        clouds_ok = false;
+        cloudsHardStopReason = `ceiling ${Math.round(ceilingFtAgl)} ft — below ${Math.round(minCeilingLimit)} ft minimum`;
+      }
+      // ── No hard stop — evaluate advisory cautions ─────────────────────────
+      else {
+        clouds_ok = true;
 
-      // Optional caution flag for low scattered/few layers
-      if (!hazardousWeather && ceilingFtAgl == null && lowestScatteredBase != null) {
-        clouds_caution = lowestScatteredBase < minCeilingLimit;
+        // Advisory A: ceiling exists but is within 500 ft of the limit (tight margin).
+        if (ceilingFtAgl != null && (ceilingFtAgl - minCeilingLimit) < 500) {
+          clouds_caution = true;
+          cloudsCautionReason = `ceiling ${Math.round(ceilingFtAgl)} ft — within 500 ft of ${Math.round(minCeilingLimit)} ft minimum`;
+        }
+
+        // Advisory B: low SCT/FEW layer below deployment altitude reduces spotting margin.
+        if (!clouds_caution && lowestScatteredBase != null && lowestScatteredBase < deploymentAltAgl) {
+          clouds_caution = true;
+          cloudsCautionReason = `scattered layer at ${Math.round(lowestScatteredBase)} ft — below deployment altitude ${Math.round(deploymentAltAgl)} ft`;
+        }
       }
     }
 
-    if (hasMetar && hazardousWeather) reasons.push('hazardous weather');
-    else if (hasMetar && !cloudSummary && ceilingFtAgl == null && lowestScatteredBase == null) reasons.push('missing clouds');
-    else if (hasMetar && !clouds_ok) reasons.push('clouds');
+    // Push reason into the overall decision reasons array.
+    if (hasMetar) {
+      if (!clouds_ok) {
+        // Distinguish between convective/wx and ceiling stops for the summary.
+        if (hasObscuration || hasConvectiveLayers || hazardousWeather) {
+          reasons.push('hazardous weather');
+        } else {
+          reasons.push('ceiling');
+        }
+      }
+      // Advisory cautions are shown in the cloud component but don't block GO.
+    }
 
     const da_ok = hasMetar && (densityAlt != null) && (maxDensityAlt == null || densityAlt <= maxDensityAlt);
     if (hasMetar && densityAlt == null) reasons.push('missing density altitude');
@@ -1246,15 +1312,23 @@ th, td{
         detail: visSm == null ? 'Unavailable' : `${Number.isInteger(visSm) ? Math.round(visSm) : visSm.toFixed(1)} sm / min ${minVisibilitySm}`,
       },
       clouds: {
-        status: hazardousWeather
-          ? 'no_go'
-          : (!clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good')),
-        detail:
-          ((cloudSummary || 'Unavailable') +
-          (ceilingFtAgl != null ? ` / ceiling ${Math.round(ceilingFtAgl)} ft` : '') +
-          (lowestScatteredBase != null && ceilingFtAgl == null ? ` / lowest SCT-FEW ${Math.round(lowestScatteredBase)} ft` : '') +
-          ` / min ${Math.round(minCeilingLimit)} ft` +
-          (hazardousWeatherLabel ? ` / ${hazardousWeatherLabel}` : '')),
+        status: !clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good'),
+        detail: (() => {
+          // Hard stop: show the reason directly.
+          if (!clouds_ok) return cloudsHardStopReason || 'no-go';
+
+          // Advisory caution.
+          if (clouds_caution) return cloudsCautionReason || 'caution';
+
+          // Clear sky cases.
+          if (clearSkyByText || cloudLayers.length === 0) {
+            return (cloudSummary && cloudSummary !== 'null') ? cloudSummary : 'Clear';
+          }
+
+          // SCT/FEW only — show layers and the configured ceiling limit.
+          const layerStr = cloudSummary || `${lowestScatteredBase != null ? lowestScatteredBase + ' ft' : '—'} SCT/FEW`;
+          return `${layerStr} — no ceiling / min ${Math.round(minCeilingLimit)} ft`;
+        })(),
       },
       density_altitude: {
         status: da_ok ? 'good' : 'no_go',
