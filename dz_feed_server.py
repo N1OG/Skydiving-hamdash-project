@@ -43,6 +43,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Fallback version used when version.json is not present (standalone / Pi mode).
+# This is the ONLY version string in this file — do not add others.
+__version__ = "1.1.15"
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # Prefer ./config/ but fall back to BASE_DIR if running from a flat folder.
@@ -927,6 +931,24 @@ def _load_jump_profiles() -> Dict[str, Any]:
     return out
 
 
+def _load_app_version() -> str:
+    """Read the version string from version.json written by main.js (Electron).
+    Falls back to dz_feed_server.py's own __version__ if running standalone."""
+    candidates = [
+        BASE_DIR / "version.json",           # Electron runtime dir (Windows/Mac)
+        BASE_DIR / ".." / "version.json",    # One level up (dev layout)
+    ]
+    for p in candidates:
+        try:
+            data = json.loads(p.resolve().read_text(encoding="utf-8"))
+            v = data.get("version", "").strip()
+            if v:
+                return v
+        except Exception:
+            pass
+    return __version__
+
+
 def _ensure_files() -> None:
     # Ensure minimum files exist so first run doesn't explode.
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1041,7 +1063,7 @@ def _cached_aloft(lat: Any, lon: Any, force: bool = False) -> Dict[str, Any]:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "dzfeed/v1.1.18"
+    server_version = _load_app_version()  # set once at class definition time
 
     def _send(self, status: int, body: bytes, content_type: str = "application/json; charset=utf-8") -> None:
         self.send_response(status)
@@ -1106,6 +1128,14 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/favicon.ico":
             self._send(204, b"", content_type="text/plain; charset=utf-8")
+            return
+
+        if path == "/build_info.json":
+            self._send_json(200, {
+                "ok": True,
+                "version": _load_app_version(),
+                "productName": "Skydiving Dashboard",
+            })
             return
 
         if path == "/status.json":
