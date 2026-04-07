@@ -706,7 +706,6 @@ th, td{
           <div class="breakRow"><div class="breakLabel">Visibility</div><div class="breakState info" id="breakVisibilityState">—</div><div class="breakDetail" id="breakVisibilityDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Clouds</div><div class="breakState info" id="breakCloudsState">—</div><div class="breakDetail" id="breakCloudsDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Density Alt</div><div class="breakState info" id="breakDAState">—</div><div class="breakDetail" id="breakDADetail">—</div></div>
-          <div class="breakRow"><div class="breakLabel">Aloft</div><div class="breakState info" id="breakAloftState">—</div><div class="breakDetail" id="breakAloftDetail">—</div></div>
         </div>
       </div>
     </div>
@@ -784,60 +783,25 @@ th, td{
   </div>
   <dialog id="limitsDlg" class="limitsDlg">
     <div class="limitsHead">
-      <div>
-        <div class="limitsTitle">Jump Profile Limits</div>
-        <div class="small" id="limitsProfileName" style="margin-top:2px; color:var(--muted);">—</div>
-      </div>
+      <div class="limitsTitle">Limits · Active Profile</div>
       <button id="limitsCloseBtn" class="iconBtn" title="Close">✕</button>
     </div>
 
     <div class="limitsBody">
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Profile Name</div>
-      <div style="margin-bottom:14px;">
-        <input id="lim_profile_name" type="text" placeholder="Profile name"
-          style="width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.16); color:var(--text); border-radius:10px; padding:7px 10px; outline:none; box-sizing:border-box;">
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Surface Wind</div>
-      <div class="grid2" style="margin-bottom:14px;">
+      <div class="grid2">
         <div class="kv"><div class="k">Max surface wind (kt)</div><div class="v"><input id="lim_surface" type="number" min="0" step="1" style="width:110px"></div></div>
-        <div class="kv"><div class="k">Max gust (kt)</div><div class="v"><input id="lim_gust" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max gust spread (kt)</div><div class="v"><input id="lim_gust_spread" type="number" min="0" step="1" style="width:110px"></div></div>
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Sky &amp; Visibility</div>
-      <div class="grid2" style="margin-bottom:14px;">
-        <div class="kv"><div class="k">Min visibility (sm)</div><div class="v"><input id="lim_visibility" type="number" min="0" step="0.5" style="width:110px" placeholder="3"></div></div>
-        <div class="kv"><div class="k">Min ceiling (ft AGL)</div><div class="v"><input id="lim_ceiling" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Temperature</div>
-      <div class="grid2" style="margin-bottom:14px;">
         <div class="kv"><div class="k">Min temp (°F)</div><div class="v"><input id="lim_temp_min" type="number" step="1" style="width:110px" placeholder="—"></div></div>
-        <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Winds Aloft</div>
-      <div class="grid2" style="margin-bottom:14px;">
-        <div class="kv"><div class="k">Max aloft ≤14k (kt)</div><div class="v"><input id="lim_aloft" type="number" min="0" step="1" style="width:110px"></div></div>
+          <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
         <div class="kv"><div class="k">Max shear ≤14k (kt)</div><div class="v"><input id="lim_shear" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Max dir change (deg)</div><div class="v"><input id="lim_dir" type="number" min="0" step="1" style="width:110px"></div></div>
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em;">Jump Profile</div>
-      <div class="grid2" style="margin-bottom:14px;">
-        <div class="kv"><div class="k">Max density alt (ft)</div><div class="v"><input id="lim_density_alt" type="number" min="0" step="100" style="width:110px"></div></div>
         <div class="kv"><div class="k">Planned exit alt (MSL ft)</div><div class="v"><input id="lim_exit_alt" type="number" min="0" step="100" style="width:110px" placeholder="13500"></div></div>
         <div class="kv"><div class="k">Deployment alt (AGL ft)</div><div class="v"><input id="lim_deploy_alt" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
       </div>
 
-      <div class="row" style="margin-top:4px; justify-content:space-between; align-items:center;">
-        <div class="row" style="gap:8px;">
-          <button id="saveProfileBtn">Save</button>
-          <button id="resetProfileBtn" style="background:rgba(255,255,255,.06);">Reset to Saved</button>
-        </div>
-        <span class="small">Changes take effect immediately on save.</span>
+      <div class="row" style="margin-top:12px; justify-content:space-between;">
+        <button id="saveProfileBtn">Save to this profile</button>
+        <span class="small">Saved on the server and becomes the active limits immediately.</span>
       </div>
     </div>
   </dialog>
@@ -1174,11 +1138,14 @@ th, td{
     Number.isFinite(Number(x.base_ft_agl))
     );
 
-    const ceilingFtAgl = Number.isFinite(Number(metar.ceiling_ft_agl))
-    ? Number(metar.ceiling_ft_agl)
-    : (ceilingLayers
-      .map(x => Number(x.base_ft_agl))
-      .sort((a, b) => a - b)[0] ?? null);
+    // Guard: Number(null) === 0 and isFinite(0) === true, so an explicit null
+    // check is required before calling Number() — otherwise clear sky
+    // (ceiling_ft_agl: null) is parsed as 0 ft and triggers a NO-GO.
+    const ceilingFtAgl = (metar.ceiling_ft_agl != null && Number.isFinite(Number(metar.ceiling_ft_agl)))
+      ? Number(metar.ceiling_ft_agl)
+      : (ceilingLayers
+          .map(x => Number(x.base_ft_agl))
+          .sort((a, b) => a - b)[0] ?? null);
 
     const lowestScatteredBase = scatteredLayers.length
     ? Math.min(...scatteredLayers.map(x => Number(x.base_ft_agl)))
@@ -1523,11 +1490,12 @@ th, td{
     const radar = (snapshot && snapshot.radar) ? snapshot.radar : {};
     const prof  = (snapshot && snapshot.profile) ? snapshot.profile : {};
 
-    // Windy embed
+    // Windy embed — reload when the DZ changes (src changes) or when explicitly
+    // force-reloaded by the timer below. Do not reload on every METAR refresh
+    // since a full iframe reload is expensive and model data only updates ~6h.
     const wf = $("windyFrame");
     const src = windy.iframe_src || "";
     if (wf){
-      // Only update src when it actually changes (prevents reloading on every refresh)
       if (src && wf.getAttribute("src") !== src){
         wf.setAttribute("src", src);
       }
@@ -1536,7 +1504,7 @@ th, td{
       }
     }
 
-    // Radar loop (cache-bust so the gif animates and updates)
+    // Radar loop — cache-bust timestamp ensures a fresh GIF on every call.
     const station = radar.station || prof.radar_station || "";
     const baseUrl = radar.image_url || "";
     const stamp = Date.now();
@@ -1556,6 +1524,20 @@ th, td{
     }
   }
 
+  // Force-reload the Windy iframe on a schedule so the model data stays current.
+  // ECMWF runs update every 6 hours; reloading every 6 hours keeps the animation
+  // showing the latest forecast rather than replaying a stale model run.
+  // Setting wf.src = wf.src forces a reload even when the URL hasn't changed.
+  function startWindyTimer(){
+    const msPerReload = 6 * 60 * 60 * 1000; // 6 hours
+    window.setInterval(() => {
+      const wf = $("windyFrame");
+      if (wf && wf.getAttribute("src")) {
+        wf.src = wf.getAttribute("src");
+      }
+    }, msPerReload);
+  }
+
   function setLimitsUI(snapshot){
     const lim = snapshot.limits || {};
     $("lim_surface").value = lim.max_surface_wind_kt ?? "";
@@ -1571,16 +1553,6 @@ th, td{
     $("lim_dir").value = lim.max_dir_change_deg ?? "";
     $("lim_exit_alt").value = lim.planned_exit_altitude_msl_ft ?? "";
     $("lim_deploy_alt").value = lim.deployment_altitude_agl_ft ?? "";
-
-    // Keep the profile name field and subtitle in sync with the active profile.
-    const sel = $("profileSelect");
-    const profileName = sel && sel.selectedOptions[0]
-      ? sel.selectedOptions[0].textContent.replace(" (built-in)", "").trim()
-      : "";
-    const nameInput = $("lim_profile_name");
-    if (nameInput) nameInput.value = profileName;
-    const subtitle = $("limitsProfileName");
-    if (subtitle) subtitle.textContent = profileName || "—";
   }
 
   async function apiGet(path){
@@ -1843,15 +1815,6 @@ th, td{
     if (!dlg || !openBtn || !closeBtn) return;
 
     openBtn.addEventListener("click", () => {
-      // Sync the profile name field whenever the modal opens.
-      const sel = $("profileSelect");
-      const nameInput = $("lim_profile_name");
-      const subtitle = $("limitsProfileName");
-      if (sel && sel.selectedOptions[0]) {
-        const n = sel.selectedOptions[0].textContent.replace(" (built-in)", "").trim();
-        if (nameInput) nameInput.value = n;
-        if (subtitle) subtitle.textContent = n;
-      }
       // showModal gives us a backdrop + focus trap
       if (typeof dlg.showModal === "function") dlg.showModal();
       else dlg.setAttribute("open","open");
@@ -1917,15 +1880,9 @@ th, td{
       if (limits[k] == null) delete limits[k];
     }
 
-    // Use the editable name field if the user changed it, fall back to dropdown.
-    const nameInput = $("lim_profile_name");
-    const profileName = (nameInput && nameInput.value.trim())
-      ? nameInput.value.trim()
-      : $("profileSelect").selectedOptions[0].textContent.replace(" (built-in)", "").trim();
-
     const res = await apiPost("/save_profile", {
       profile_id: pid,
-      name: profileName,
+      name: $("profileSelect").selectedOptions[0].textContent.replace(" (built-in)",""),
       limits
     });
 
@@ -1934,16 +1891,8 @@ th, td{
     } else {
       await loadProfiles();
       await refreshSnapshot("save-profile");
-      // Update the profile name subtitle to reflect any rename.
-      const subtitle = $("limitsProfileName");
-      if (subtitle) subtitle.textContent = profileName;
     }
 
-  });
-
-  // Reset to saved: reload current profile limits from the server without saving.
-  $("resetProfileBtn").addEventListener("click", async () => {
-    await refreshSnapshot("profile-change");
   });
 
   // --- Init ---
@@ -1952,6 +1901,7 @@ th, td{
   startClock();
   startMetarTimer();
   startAloftTimer();
+  startWindyTimer();
 
   // tryConnect() does the initial server handshake. It retries every 15 s
   // until it succeeds so a slow-starting server is handled automatically.
