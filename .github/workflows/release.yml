@@ -1,98 +1,107 @@
-name: Build Release Artifacts
+name: Release
 
 on:
   push:
     tags:
-      - "v*"
+      - 'v*.*.*'
 
 jobs:
-  windows_installer:
-    name: Windows Installer (Electron NSIS)
+  release:
     runs-on: windows-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Extract version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "TAG_NAME=$TAG"     >> $GITHUB_ENV
+          echo "VERSION=$VERSION"  >> $GITHUB_ENV
+          echo "Tag: $TAG  ->  Version: $VERSION"
+
+      - name: Write version.json
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const payload = {
+              version: '${{ env.VERSION }}',
+              productName: 'Skydiving Dashboard',
+              generatedAt: new Date().toISOString()
+            };
+            fs.writeFileSync('version.json', JSON.stringify(payload, null, 2) + '\n', 'utf8');
+            console.log('version.json written:', payload.version);
+          "
+
+      - name: Patch package.json version
+        shell: bash
+        working-directory: electron-wrapper
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${{ env.VERSION }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+            console.log('package.json version set to', pkg.version);
+          "
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: electron-wrapper/package-lock.json
 
-      - name: Install dependencies (electron-wrapper)
+      - name: Install dependencies
         working-directory: electron-wrapper
         run: npm ci
 
-      - name: Build installer
+      - name: Build Windows installer
         working-directory: electron-wrapper
         run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Zip Windows installer
-        shell: pwsh
+      - name: Find installer
+        shell: bash
         run: |
-          $dist = "electron-wrapper/dist"
-          $exe = Get-ChildItem $dist -Filter "*.exe" | Select-Object -First 1
-          if (-not $exe) { throw "No installer EXE found in $dist" }
-          $zipPath = Join-Path $dist "SkydivingDashboard-Windows-Installer.zip"
-          if (Test-Path $zipPath) { Remove-Item $zipPath }
-          Compress-Archive -Path $exe.FullName -DestinationPath $zipPath
-          echo "ZIP_CREATED=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          INSTALLER=$(ls electron-wrapper/dist/*.exe | grep -v blockmap | head -1)
+          echo "INSTALLER_PATH=$INSTALLER" >> $GITHUB_ENV
+          echo "Found: $INSTALLER"
 
-      - name: Upload artifacts (Windows)
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: |
-            electron-wrapper/dist/*.exe
-            electron-wrapper/dist/*.zip
-
-  pi_bundle:
-    name: Raspberry Pi Bundle (Kiosk)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create Pi bundle zip
+      - name: Build Pi zip
+        shell: bash
         run: |
-          mkdir -p release/pi/skydiving-dashboard
-          cp dashboard.html release/pi/skydiving-dashboard/
-          cp dz_feed_server.py release/pi/skydiving-dashboard/
-          cp -r config release/pi/skydiving-dashboard/config
+          mkdir -p pi_build/config
+          cp dashboard.html    pi_build/
+          cp dz_feed_server.py pi_build/
+          cp version.json      pi_build/
+          cp pi/install_pi.sh  pi_build/
+          for f in config/*.json; do
+            basename="$(basename "$f")"
+            if [[ "$basename" != *"Copy"* ]]; then
+              cp "$f" "pi_build/config/$basename"
+            fi
+          done
+          cd pi_build
+          7z a ../SkydivingDashboard-RaspberryPi-Kiosk.zip .
+          cd ..
+          echo "Pi zip contents:"
+          7z l SkydivingDashboard-RaspberryPi-Kiosk.zip
 
-          # Include pi installer scripts if present (we'll add them next)
-          if [ -d "pi" ]; then
-            cp -r pi release/pi/skydiving-dashboard/pi
-          fi
-
-          cd release/pi
-          zip -r SkydivingDashboard-RaspberryPi-Kiosk.zip skydiving-dashboard
-
-      - name: Upload artifact (Pi)
-        uses: actions/upload-artifact@v4
-        with:
-          name: pi-kiosk-bundle
-          path: release/pi/SkydivingDashboard-RaspberryPi-Kiosk.zip
-
-  publish_release:
-    name: Publish GitHub Release Assets
-    needs: [windows_installer, pi_bundle]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-
-      - name: List assets
-        run: ls -R release-assets
-
-      - name: Publish to GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: "Skydiving Dashboard ${{ env.TAG_NAME }}"
+          draft: false
+          prerelease: false
           files: |
-            release-assets/**/*
+            ${{ env.INSTALLER_PATH }}
+            SkydivingDashboard-RaspberryPi-Kiosk.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
