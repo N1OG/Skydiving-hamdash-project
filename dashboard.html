@@ -1415,7 +1415,7 @@ th, td{
 
     // Small cards
     const setText = (id, val) => { const e = $(id); if (e) e.textContent = (val===null||val===undefined||val==="") ? "—" : String(val); };
-    setText("metarStation", stationLabel);
+    setText("metarStation", station);
     setText("metarWind", windKt==null ? "—" : Math.round(windKt));
     setText("metarGust", gustKt==null ? "—" : Math.round(gustKt));
     setText("metarTemp", (ok && (metar.temp_f!=null || metar.temp_c!=null)) ? `${metar.temp_f!=null ? metar.temp_f : Math.round((metar.temp_c*9/5)+32)}°F / ${metar.temp_c!=null ? Math.round(metar.temp_c) : Math.round(((metar.temp_f-32)*5)/9)}°C` : "—");
