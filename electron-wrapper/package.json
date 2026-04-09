@@ -1,15 +1,13 @@
 {
   "name": "skydiving-dashboard-electron-wrapper",
-  "version": "1.1.18",
+  "version": "1.1.20",
   "description": "Electron wrapper for Skydiving Dashboard (starts local Python feed + fullscreen app window)",
   "main": "main.js",
   "private": true,
   "scripts": {
     "dev": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "prebuild": "node -e \"const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));fs.writeFileSync('../version.json',JSON.stringify({version:pkg.version,productName:pkg.build.productName,generatedAt:new Date().toISOString()},null,2),'utf8');console.log('version.json written: '+pkg.version);\"",
-    "predist": "node -e \"const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));fs.writeFileSync('../version.json',JSON.stringify({version:pkg.version,productName:pkg.build.productName,generatedAt:new Date().toISOString()},null,2),'utf8');console.log('version.json written: '+pkg.version);\""
+    "dist": "electron-builder"
   },
   "devDependencies": {
     "electron": "^30.0.0",
@@ -34,10 +32,6 @@
       {
         "from": "../config",
         "to": "config"
-      },
-      {
-        "from": "../version.json",
-        "to": "version.json"
       }
     ],
     "win": {

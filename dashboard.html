@@ -1396,18 +1396,26 @@ th, td{
     const landingDeg = (windFrom!=null) ? (windFrom % 360) : null; // arrow points INTO the wind (wind-from)
 
 
+    // metar_note is set when the METAR station is not at the DZ airport (substitute station).
+    // It contains a short description like "Weather from KXXX (Name), ~N nm DIR — Airport (LID) has no METAR".
+    const metarNote = (prof.metar_note && typeof prof.metar_note === "string") ? prof.metar_note : null;
+
+    // Station label: append substitute-station note when present so the crew can see at a glance
+    // that weather is coming from a nearby airport, not the DZ itself.
+    const stationLabel = metarNote ? `${station} — ${metarNote}` : station;
+
     // Main text lines
     const wLine = ok
       ? `Wind ${windKt!=null ? Math.round(windKt) : "—"} kt` + (gustKt!=null ? ` · Gust ${Math.round(gustKt)} kt` : "") + (spread!=null ? ` · Spread ${Math.round(spread)} kt` : "")
       : "METAR unavailable";
-    const oLine = ok ? `Station ${station} · Obs ${obs}` : `Station ${station} · ${metar.error || "unknown error"}`;
+    const oLine = ok ? `Station ${stationLabel} · Obs ${obs}` : `Station ${stationLabel} · ${metar.error || "unknown error"}`;
 
     const elWindLine = $("surfaceWindLine"); if (elWindLine) elWindLine.textContent = wLine;
     const elObsLine  = $("surfaceObsLine");  if (elObsLine)  elObsLine.textContent  = oLine;
 
     // Small cards
     const setText = (id, val) => { const e = $(id); if (e) e.textContent = (val===null||val===undefined||val==="") ? "—" : String(val); };
-    setText("metarStation", station);
+    setText("metarStation", stationLabel);
     setText("metarWind", windKt==null ? "—" : Math.round(windKt));
     setText("metarGust", gustKt==null ? "—" : Math.round(gustKt));
     setText("metarTemp", (ok && (metar.temp_f!=null || metar.temp_c!=null)) ? `${metar.temp_f!=null ? metar.temp_f : Math.round((metar.temp_c*9/5)+32)}°F / ${metar.temp_c!=null ? Math.round(metar.temp_c) : Math.round(((metar.temp_f-32)*5)/9)}°C` : "—");
@@ -1525,11 +1533,11 @@ th, td{
   }
 
   // Force-reload the Windy iframe on a schedule so the model data stays current.
-  // ECMWF runs update every 6 hours; reloading every 6 hours keeps the animation
-  // showing the latest forecast rather than replaying a stale model run.
+  // ECMWF runs update every 6 hours; reloading every hour keeps the animation
+  // showing fresh forecast data and the latest radar loop.
   // Setting wf.src = wf.src forces a reload even when the URL hasn't changed.
   function startWindyTimer(){
-    const msPerReload = 6 * 60 * 60 * 1000; // 6 hours
+    const msPerReload = 1 * 60 * 60 * 1000; // 1 hour
     window.setInterval(() => {
       const wf = $("windyFrame");
       if (wf && wf.getAttribute("src")) {
@@ -1732,6 +1740,9 @@ th, td{
     setDecisionUI(snap);
     setSurfaceUI(snap);
     setWeatherRiskUI(snap);
+    // Refresh radar every 5 minutes alongside METAR.
+    // Windy only reloads if the src changed (DZ switch); its own timer handles periodic refresh.
+    setVisualUI(snap);
   }
 
   // ── Aloft-only refresh ────────────────────────────────────────────────────

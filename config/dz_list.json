@@ -7,14 +7,18 @@
     "state": "PA",
     "city": "Hazleton",
     "icao": "KHZL",
-    "lat": 40.98677,
+    "lat": 40.9868,
     "lon": -75.9947,
     "radar": "KBGM",
     "radar_station": "KBGM",
     "notes": null,
     "name": "Above the Poconos Skydivers",
     "key": "above-the-poconos-skydivers",
-    "field_elevation_ft": 1729
+    "field_elevation_ft": 1603,
+    "metar_note": null,
+    "runways": [
+      10
+    ]
   },
   "action-flight-aviation-llc-skydive": {
     "burble_dz_id": 12671,
@@ -23,15 +27,20 @@
     "country": "US",
     "state": "CA",
     "city": "Lodi",
-    "icao": "1O3",
-    "lat": 38.2024,
-    "lon": -121.2683,
+    "icao": "KSCK",
+    "lat": 38.2025,
+    "lon": -121.2692,
     "radar": "KDAX",
     "radar_station": "KDAX",
     "notes": null,
     "name": "ACTION FLIGHT AVIATION LLC - Skydive",
     "key": "action-flight-aviation-llc-skydive",
-    "field_elevation_ft": 58
+    "field_elevation_ft": 59,
+    "metar_note": "Weather from KSCK (Stockton Metro), ~19 nm S — Lodi Airport (1O3) has no METAR",
+    "runways": [
+      8,
+      12
+    ]
   },
   "aerohio-skydiving": {
     "burble_dz_id": 5415,
@@ -40,15 +49,19 @@
     "country": "US",
     "state": "OH",
     "city": "Ashland",
-    "icao": "3G4",
-    "lat": 40.9025,
+    "icao": "KMFD",
+    "lat": 40.903,
     "lon": -82.2556,
     "radar": "KCLE",
     "radar_station": "KCLE",
     "notes": null,
     "name": "AerOhio Skydiving",
     "key": "aerohio-skydiving",
-    "field_elevation_ft": 1237
+    "field_elevation_ft": 1207,
+    "metar_note": "Weather from KMFD (Mansfield Lahm Regional), ~13 nm SW — Ashland County (3G4) has no METAR",
+    "runways": [
+      1
+    ]
   },
   "bay-area-skydiving": {
     "burble_dz_id": 2993,
@@ -57,15 +70,20 @@
     "country": "US",
     "state": "CA",
     "city": "Byron",
-    "icao": "C83",
-    "lat": 37.8283,
-    "lon": -121.6267,
+    "icao": "KC83",
+    "lat": 37.8285,
+    "lon": -121.6258,
     "radar": "KMUX",
     "radar_station": "KMUX",
     "notes": null,
     "name": "Bay Area Skydiving",
     "key": "bay-area-skydiving",
-    "field_elevation_ft": 79
+    "field_elevation_ft": 78,
+    "metar_note": null,
+    "runways": [
+      5,
+      12
+    ]
   },
   "blue-sky-ranch": {
     "burble_dz_id": 2023,
@@ -74,15 +92,19 @@
     "country": "US",
     "state": "NY",
     "city": "Gardiner",
-    "icao": "5NY5",
-    "lat": 41.666667,
-    "lon": -74.149444,
+    "icao": "KSWF",
+    "lat": 41.6668,
+    "lon": -74.1494,
     "radar": "KENX",
     "radar_station": "KENX",
     "notes": null,
     "name": "Blue Sky Ranch",
     "key": "blue-sky-ranch",
-    "field_elevation_ft": 200
+    "field_elevation_ft": 370,
+    "metar_note": "Weather from KSWF (NY Stewart Intl), ~10 nm S — Gardiner (5NY5) has no METAR",
+    "runways": [
+      12
+    ]
   },
   "boston-skydive-center": {
     "burble_dz_id": 12441,
@@ -92,14 +114,19 @@
     "state": "RI",
     "city": "Smithfield",
     "icao": "KSFZ",
-    "lat": 41.920556,
-    "lon": -71.491389,
+    "lat": 41.9206,
+    "lon": -71.4914,
     "radar": "KBOX",
     "radar_station": "KBOX",
     "notes": null,
     "name": "Boston Skydive Center",
     "key": "boston-skydive-center",
-    "field_elevation_ft": 249
+    "field_elevation_ft": 441,
+    "metar_note": null,
+    "runways": [
+      5,
+      15
+    ]
   },
   "cadence-sky-sports": {
     "burble_dz_id": 348,
@@ -108,15 +135,19 @@
     "country": "US",
     "state": "AZ",
     "city": "Eloy",
-    "icao": "KE60",
-    "lat": 32.80701,
-    "lon": -111.58679,
+    "icao": "KP08",
+    "lat": 32.807,
+    "lon": -111.5868,
     "radar": "KEMX",
     "radar_station": "KEMX",
     "notes": null,
     "name": "Cadence Sky Sports",
     "key": "cadence-sky-sports",
-    "field_elevation_ft": 1515
+    "field_elevation_ft": 1510,
+    "metar_note": "Weather from KP08 (Coolidge Municipal), ~11 nm NE — Eloy Municipal (E60) has no METAR",
+    "runways": [
+      2
+    ]
   },
   "canton-air-sports": {
     "burble_dz_id": 2973,
@@ -126,14 +157,18 @@
     "state": "OH",
     "city": "Akron",
     "icao": "KAKR",
-    "lat": 41.0375,
-    "lon": -81.4669,
+    "lat": 41.0374,
+    "lon": -81.4677,
     "radar": "KCLE",
     "radar_station": "KCLE",
     "notes": null,
     "name": "Canton Air Sports",
     "key": "canton-air-sports",
-    "field_elevation_ft": 1228
+    "field_elevation_ft": 1067,
+    "metar_note": null,
+    "runways": [
+      7
+    ]
   },
   "cleveland-skydiving-center": {
     "burble_dz_id": 3481,
@@ -142,15 +177,19 @@
     "country": "US",
     "state": "OH",
     "city": "Jefferson",
-    "icao": "7D8",
-    "lat": 41.3512,
-    "lon": -81.0995,
+    "icao": "KHZY",
+    "lat": 41.7778,
+    "lon": -80.6968,
     "radar": "KCLE",
     "radar_station": "KCLE",
     "notes": null,
     "name": "Cleveland Skydiving Center",
     "key": "cleveland-skydiving-center",
-    "field_elevation_ft": 875
+    "field_elevation_ft": 924,
+    "metar_note": null,
+    "runways": [
+      9
+    ]
   },
   "connecticut-parachutists-inc": {
     "burble_dz_id": 16141,
@@ -159,15 +198,19 @@
     "country": "US",
     "state": "CT",
     "city": "Ellington",
-    "icao": "7B9",
-    "lat": 41.92542,
-    "lon": -72.45711,
+    "icao": "KBDL",
+    "lat": 41.9254,
+    "lon": -72.4571,
     "radar": "KBOX",
     "radar_station": "KBOX",
     "notes": null,
     "name": "Connecticut Parachutists Inc",
     "key": "connecticut-parachutists-inc",
-    "field_elevation_ft": 250
+    "field_elevation_ft": 253,
+    "metar_note": "Weather from KBDL (Bradley International), ~10 nm W — Ellington (7B9) has no METAR",
+    "runways": [
+      1
+    ]
   },
   "crystal-coast-skydiving-llc": {
     "burble_dz_id": 7411,
@@ -177,14 +220,19 @@
     "state": "NC",
     "city": "Beaufort",
     "icao": "KMRH",
-    "lat": 34.7336,
-    "lon": -76.6606,
+    "lat": 34.7338,
+    "lon": -76.6604,
     "radar": "KMHX",
     "radar_station": "KMHX",
     "notes": null,
     "name": "Crystal Coast Skydiving LLC",
     "key": "crystal-coast-skydiving-llc",
-    "field_elevation_ft": 11
+    "field_elevation_ft": 10,
+    "metar_note": null,
+    "runways": [
+      3,
+      8
+    ]
   },
   "chicagoland-skydiving-center": {
     "burble_dz_id": 408,
@@ -194,14 +242,18 @@
     "state": "IL",
     "city": "Rochelle",
     "icao": "KRPJ",
-    "lat": 41.8925,
-    "lon": -89.079444,
+    "lat": 41.8926,
+    "lon": -89.0796,
     "radar": "KLOT",
     "radar_station": "KLOT",
     "notes": null,
     "name": "Chicagoland Skydiving Center",
     "key": "chicagoland-skydiving-center",
-    "field_elevation_ft": 781
+    "field_elevation_ft": 781,
+    "metar_note": null,
+    "runways": [
+      7
+    ]
   },
   "dallas-skydive-center": {
     "burble_dz_id": 2271,
@@ -210,15 +262,20 @@
     "country": "US",
     "state": "TX",
     "city": "Caddo Mills",
-    "icao": "7F3",
-    "lat": 33.03622,
-    "lon": -96.24314,
+    "icao": "KGVT",
+    "lat": 33.0362,
+    "lon": -96.2431,
     "radar": "KFWS",
     "radar_station": "KFWS",
     "notes": null,
     "name": "Dallas Skydive Center",
     "key": "dallas-skydive-center",
-    "field_elevation_ft": 545
+    "field_elevation_ft": 541,
+    "metar_note": "Weather from KGVT (Majors Airport, Greenville), ~9 nm E — Caddo Mills (7F3) has no METAR",
+    "runways": [
+      13,
+      18
+    ]
   },
   "des-moines-skydivers": {
     "burble_dz_id": 47,
@@ -228,48 +285,60 @@
     "state": "IA",
     "city": "Newton",
     "icao": "KTNU",
-    "lat": 41.6744,
+    "lat": 41.6745,
     "lon": -93.0217,
     "radar": "KDMX",
     "radar_station": "KDMX",
     "notes": null,
     "name": "Des Moines Skydivers",
     "key": "des-moines-skydivers",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 953,
+    "metar_note": null,
+    "runways": [
+      14
+    ]
   },
   "dzone-boise": {
     "burble_dz_id": 731,
     "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=731",
-    "label": "DZONE\u00ae - Boise",
+    "label": "DZONE® - Boise",
     "country": "US",
     "state": "ID",
     "city": "Caldwell",
     "icao": "KEUL",
-    "lat": 43.6419,
-    "lon": -116.635,
+    "lat": 43.6418,
+    "lon": -116.6358,
     "radar": "KCBX",
     "radar_station": "KCBX",
     "notes": null,
-    "name": "DZONE\u00ae - Boise",
+    "name": "DZONE® - Boise",
     "key": "dzone-boise",
-    "field_elevation_ft": 2438
+    "field_elevation_ft": 2431,
+    "metar_note": null,
+    "runways": [
+      12
+    ]
   },
   "dzone-bozeman": {
     "burble_dz_id": 871,
     "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=871",
-    "label": "DZONE\u00ae Bozeman",
+    "label": "DZONE® Bozeman",
     "country": "US",
     "state": "MT",
     "city": "Manhattan",
-    "icao": "KHZR",
-    "lat": 45.8299,
-    "lon": -111.266,
+    "icao": "KBZN",
+    "lat": 45.8781,
+    "lon": -111.5694,
     "radar": "KTFX",
     "radar_station": "KTFX",
     "notes": null,
-    "name": "DZONE\u00ae Bozeman",
+    "name": "DZONE® Bozeman",
     "key": "dzone-bozeman",
-    "field_elevation_ft": 4076
+    "field_elevation_ft": 4089,
+    "metar_note": "Weather from KBZN (Bozeman Yellowstone Intl), ~19 nm E — Three Forks Airport (9S5) has no METAR",
+    "runways": [
+      3
+    ]
   },
   "eugene-skydivers": {
     "burble_dz_id": 6123,
@@ -278,15 +347,19 @@
     "country": "US",
     "state": "OR",
     "city": "Creswell",
-    "icao": "77S",
-    "lat": 43.9176,
-    "lon": -123.0056,
+    "icao": "K77S",
+    "lat": 43.9308,
+    "lon": -123.0067,
     "radar": "KRTX",
     "radar_station": "KRTX",
     "notes": null,
     "name": "Eugene Skydivers",
     "key": "eugene-skydivers",
-    "field_elevation_ft": 539
+    "field_elevation_ft": 541,
+    "metar_note": null,
+    "runways": [
+      16
+    ]
   },
   "florida-skydive": {
     "burble_dz_id": 4995,
@@ -295,15 +368,19 @@
     "country": "US",
     "state": "FL",
     "city": "Green Cove Springs",
-    "icao": "KRFG",
-    "lat": 29.9933,
-    "lon": -81.6784,
+    "icao": "KSGJ",
+    "lat": 29.9725,
+    "lon": -81.6609,
     "radar": "KJAX",
     "radar_station": "KJAX",
     "notes": null,
     "name": "Florida Skydive",
     "key": "florida-skydive",
-    "field_elevation_ft": 8
+    "field_elevation_ft": 21,
+    "metar_note": "Weather from KSGJ (St. Augustine Airport), ~17 nm SE — Reynolds Airpark (FL60) has no METAR",
+    "runways": [
+      5
+    ]
   },
   "flying-devil": {
     "burble_dz_id": 10381,
@@ -313,31 +390,39 @@
     "state": "TX",
     "city": "Castroville",
     "icao": "KCVB",
-    "lat": 29.3416,
-    "lon": -98.8503,
+    "lat": 29.3424,
+    "lon": -98.8512,
     "radar": "KEWX",
     "radar_station": "KEWX",
     "notes": null,
     "name": "Flying-Devil",
     "key": "flying-devil",
-    "field_elevation_ft": 787
+    "field_elevation_ft": 774,
+    "metar_note": null,
+    "runways": [
+      16
+    ]
   },
   "fyrosity": {
     "burble_dz_id": 317,
     "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=317",
-    "label": "Fyrosity\u00ae",
+    "label": "Fyrosity®",
     "country": "US",
     "state": "NV",
     "city": "Overton",
-    "icao": "U08",
-    "lat": 36.568167,
-    "lon": -114.443333,
+    "icao": "KVGT",
+    "lat": 36.5681,
+    "lon": -114.4433,
     "radar": "KESX",
     "radar_station": "KESX",
     "notes": null,
-    "name": "Fyrosity\u00ae",
+    "name": "Fyrosity®",
     "key": "fyrosity",
-    "field_elevation_ft": 1395
+    "field_elevation_ft": 1366,
+    "metar_note": "Weather from KVGT (North Las Vegas Airport), ~55 nm SW — Perkins Field (U08) has no METAR",
+    "runways": [
+      14
+    ]
   },
   "gateway-skydiving-center": {
     "burble_dz_id": 13446,
@@ -347,14 +432,19 @@
     "state": "IL",
     "city": "Alton",
     "icao": "KALN",
-    "lat": 38.8903,
+    "lat": 38.8899,
     "lon": -90.046,
     "radar": "KLSX",
     "radar_station": "KLSX",
     "notes": null,
     "name": "Gateway Skydiving Center",
     "key": "gateway-skydiving-center",
-    "field_elevation_ft": 544
+    "field_elevation_ft": 544,
+    "metar_note": null,
+    "runways": [
+      11,
+      17
+    ]
   },
   "go-skydive-nashville": {
     "burble_dz_id": 15261,
@@ -363,7 +453,7 @@
     "country": "US",
     "state": "TN",
     "city": "Humboldt",
-    "icao": "M53",
+    "icao": "KMKL",
     "lat": 35.809,
     "lon": -88.9156,
     "radar": "KNQA",
@@ -371,7 +461,11 @@
     "notes": null,
     "name": "Go Skydive Nashville",
     "key": "go-skydive-nashville",
-    "field_elevation_ft": 348
+    "field_elevation_ft": 421,
+    "metar_note": "Weather from KMKL (McKellar-Sipes Regional), ~12 nm S — Humboldt Municipal (M53) has no METAR",
+    "runways": [
+      4
+    ]
   },
   "hillman-farm-skydivers-inc": {
     "burble_dz_id": 13766,
@@ -381,14 +475,18 @@
     "state": "TN",
     "city": "Murfreesboro",
     "icao": "KMBT",
-    "lat": 35.8778,
-    "lon": -86.3774,
+    "lat": 35.8787,
+    "lon": -86.3775,
     "radar": "KOHX",
     "radar_station": "KOHX",
     "notes": null,
     "name": "Hillman Farm Skydivers Inc",
     "key": "hillman-farm-skydivers-inc",
-    "field_elevation_ft": 681
+    "field_elevation_ft": 614,
+    "metar_note": null,
+    "runways": [
+      18
+    ]
   },
   "jump-omaha-skydiving": {
     "burble_dz_id": 12031,
@@ -398,14 +496,18 @@
     "state": "NE",
     "city": "Fremont",
     "icao": "KFET",
-    "lat": 41.4491,
-    "lon": -96.5202,
+    "lat": 41.45,
+    "lon": -96.5212,
     "radar": "KOAX",
     "radar_station": "KOAX",
     "notes": null,
     "name": "Jump Omaha Skydiving",
     "key": "jump-omaha-skydiving",
-    "field_elevation_ft": 1204
+    "field_elevation_ft": 1204,
+    "metar_note": null,
+    "runways": [
+      14
+    ]
   },
   "jumptn": {
     "burble_dz_id": 230,
@@ -422,7 +524,13 @@
     "notes": null,
     "name": "JumpTN",
     "key": "jumptn",
-    "field_elevation_ft": 1083
+    "field_elevation_ft": 1084,
+    "metar_note": null,
+    "runways": [
+      6,
+      9,
+      18
+    ]
   },
   "jumptown": {
     "burble_dz_id": 417,
@@ -432,14 +540,19 @@
     "state": "MA",
     "city": "Orange",
     "icao": "KORE",
-    "lat": 42.5709,
-    "lon": -72.2886,
+    "lat": 42.57,
+    "lon": -72.2885,
     "radar": "KBOX",
     "radar_station": "KBOX",
     "notes": null,
     "name": "Jumptown",
     "key": "jumptown",
-    "field_elevation_ft": 543
+    "field_elevation_ft": 556,
+    "metar_note": null,
+    "runways": [
+      1,
+      14
+    ]
   },
   "midwest-freefall-spc-inc": {
     "burble_dz_id": 3113,
@@ -448,15 +561,19 @@
     "country": "US",
     "state": "IL",
     "city": "Hinkley",
-    "icao": "0C2",
-    "lat": 41.7692,
-    "lon": -88.6945,
+    "icao": "KDKB",
+    "lat": 41.7709,
+    "lon": -88.7034,
     "radar": "KLOT",
     "radar_station": "KLOT",
     "notes": null,
     "name": "Midwest Freefall SPC Inc.",
     "key": "midwest-freefall-spc-inc",
-    "field_elevation_ft": 915
+    "field_elevation_ft": 760,
+    "metar_note": "Weather from KDKB (DeKalb Taylor Municipal), ~10 nm N — Hinckley (0C2) has no METAR",
+    "runways": [
+      9
+    ]
   },
   "music-city-skydiving": {
     "burble_dz_id": 208,
@@ -473,7 +590,13 @@
     "notes": null,
     "name": "Music City Skydiving",
     "key": "music-city-skydiving",
-    "field_elevation_ft": 1083
+    "field_elevation_ft": 1084,
+    "metar_note": null,
+    "runways": [
+      6,
+      9,
+      18
+    ]
   },
   "ozarks-skydive-center": {
     "burble_dz_id": 1311,
@@ -490,7 +613,11 @@
     "notes": null,
     "name": "Ozarks Skydive Center",
     "key": "ozarks-skydive-center",
-    "field_elevation_ft": 1227
+    "field_elevation_ft": 1228,
+    "metar_note": null,
+    "runways": [
+      18
+    ]
   },
   "pacific-northwest-skydiving-center": {
     "burble_dz_id": 8461,
@@ -499,15 +626,19 @@
     "country": "US",
     "state": "OR",
     "city": "Mulino",
-    "icao": "4S9",
-    "lat": 45.2249,
-    "lon": -122.6468,
+    "icao": "KUAO",
+    "lat": 45.2165,
+    "lon": -122.5902,
     "radar": "KRTX",
     "radar_station": "KRTX",
     "notes": null,
     "name": "Pacific Northwest Skydiving Center",
     "key": "pacific-northwest-skydiving-center",
-    "field_elevation_ft": 200
+    "field_elevation_ft": 259,
+    "metar_note": "Weather from KUAO (Aurora State Airport), ~8 nm WNW — Mulino State (4S9) has no METAR",
+    "runways": [
+      14
+    ]
   },
   "piedmont-skydiving": {
     "burble_dz_id": 292,
@@ -517,14 +648,18 @@
     "state": "NC",
     "city": "Salisbury",
     "icao": "KRUQ",
-    "lat": 35.64,
-    "lon": -80.52,
+    "lat": 35.6459,
+    "lon": -80.5203,
     "radar": "KGSP",
     "radar_station": "KGSP",
     "notes": null,
     "name": "Piedmont Skydiving",
     "key": "piedmont-skydiving",
-    "field_elevation_ft": 767
+    "field_elevation_ft": 772,
+    "metar_note": null,
+    "runways": [
+      2
+    ]
   },
   "seven-hills-skydivers": {
     "burble_dz_id": 13976,
@@ -533,7 +668,7 @@
     "country": "US",
     "state": "WI",
     "city": "Marshall",
-    "icao": "WI97",
+    "icao": "KMSN",
     "lat": 43.1574,
     "lon": -89.062,
     "radar": "KMKX",
@@ -541,7 +676,11 @@
     "notes": null,
     "name": "Seven Hills Skydivers",
     "key": "seven-hills-skydivers",
-    "field_elevation_ft": 860
+    "field_elevation_ft": 960,
+    "metar_note": "Weather from KMSN (Dane County Regional), ~15 nm SW — Mathaire Field (WI97) has no METAR",
+    "runways": [
+      18
+    ]
   },
   "silicon-valley-skydiving": {
     "burble_dz_id": 4763,
@@ -550,15 +689,19 @@
     "country": "US",
     "state": "CA",
     "city": "San Martin",
-    "icao": "E16",
-    "lat": 37.082,
-    "lon": -121.597,
+    "icao": "KE16",
+    "lat": 37.0816,
+    "lon": -121.5968,
     "radar": "KMUX",
     "radar_station": "KMUX",
     "notes": null,
     "name": "Silicon Valley Skydiving",
     "key": "silicon-valley-skydiving",
-    "field_elevation_ft": 281
+    "field_elevation_ft": 284,
+    "metar_note": null,
+    "runways": [
+      14
+    ]
   },
   "skydance-skydiving": {
     "label": "SkyDance Skydiving",
@@ -568,14 +711,18 @@
     "state": "CA",
     "city": "Davis",
     "icao": "KDWA",
-    "lat": 38.5791,
-    "lon": -121.8574,
+    "lat": 38.5794,
+    "lon": -121.8569,
     "radar": "KDAX",
     "radar_station": "KDAX",
     "notes": null,
     "name": "SkyDance Skydiving",
     "key": "skydance-skydiving",
-    "field_elevation_ft": 69
+    "field_elevation_ft": 100,
+    "metar_note": null,
+    "runways": [
+      16
+    ]
   },
   "skydive-adventures": {
     "burble_dz_id": 4985,
@@ -585,14 +732,18 @@
     "state": "MN",
     "city": "Luverne",
     "icao": "KLYV",
-    "lat": 43.6214,
-    "lon": -96.2142,
+    "lat": 43.6168,
+    "lon": -96.2177,
     "radar": "KFSD",
     "radar_station": "KFSD",
     "notes": null,
     "name": "Skydive Adventures",
     "key": "skydive-adventures",
-    "field_elevation_ft": 1433
+    "field_elevation_ft": 1435,
+    "metar_note": null,
+    "runways": [
+      18
+    ]
   },
   "skydive-alabama": {
     "burble_dz_id": 11,
@@ -602,14 +753,18 @@
     "state": "AL",
     "city": "Cullman",
     "icao": "KCMD",
-    "lat": 34.2686,
-    "lon": -86.8583,
+    "lat": 34.2687,
+    "lon": -86.858,
     "radar": "KHTX",
     "radar_station": "KHTX",
     "notes": null,
     "name": "Skydive Alabama",
     "key": "skydive-alabama",
-    "field_elevation_ft": 963
+    "field_elevation_ft": 970,
+    "metar_note": null,
+    "runways": [
+      2
+    ]
   },
   "skydive-atlanta": {
     "burble_dz_id": 6673,
@@ -619,14 +774,18 @@
     "state": "GA",
     "city": "Thomaston",
     "icao": "KOPN",
-    "lat": 32.9559,
-    "lon": -84.2632,
+    "lat": 32.955,
+    "lon": -84.2641,
     "radar": "KFFC",
     "radar_station": "KFFC",
     "notes": null,
     "name": "Skydive Atlanta",
     "key": "skydive-atlanta",
-    "field_elevation_ft": 798
+    "field_elevation_ft": 798,
+    "metar_note": null,
+    "runways": [
+      12
+    ]
   },
   "skydive-bend": {
     "burble_dz_id": 15101,
@@ -635,15 +794,20 @@
     "country": "US",
     "state": "OR",
     "city": "Madras",
-    "icao": "S33",
-    "lat": 44.6715,
-    "lon": -121.1559,
+    "icao": "KS33",
+    "lat": 44.6702,
+    "lon": -121.1551,
     "radar": "KPDT",
     "radar_station": "KPDT",
     "notes": null,
     "name": "Skydive Bend",
     "key": "skydive-bend",
-    "field_elevation_ft": 2429
+    "field_elevation_ft": 2438,
+    "metar_note": null,
+    "runways": [
+      4,
+      16
+    ]
   },
   "skydive-california": {
     "label": "Skydive California",
@@ -652,15 +816,19 @@
     "country": "US",
     "state": "CA",
     "city": "Tracy",
-    "icao": "CA74",
-    "lat": 37.731,
-    "lon": -121.336,
+    "icao": "KTCY",
+    "lat": 37.7313,
+    "lon": -121.3356,
     "radar": "KMUX",
     "radar_station": "KMUX",
     "notes": null,
     "name": "Skydive California",
     "key": "skydive-california",
-    "field_elevation_ft": 130
+    "field_elevation_ft": 35,
+    "metar_note": "Weather from KTCY (Tracy Municipal Airport), ~6 nm SW — private strip (CA74) has no METAR",
+    "runways": [
+      12
+    ]
   },
   "skydive-carolina": {
     "label": "Skydive Carolina",
@@ -677,7 +845,12 @@
     "notes": null,
     "name": "Skydive Carolina",
     "key": "skydive-carolina",
-    "field_elevation_ft": 656
+    "field_elevation_ft": 657,
+    "metar_note": null,
+    "runways": [
+      5,
+      17
+    ]
   },
   "skydive-chesapeake": {
     "burble_dz_id": 14961,
@@ -686,15 +859,19 @@
     "country": "US",
     "state": "MD",
     "city": "Ridgely",
-    "icao": "KRJD",
-    "lat": 38.9702,
+    "icao": "KESN",
+    "lat": 38.9701,
     "lon": -75.8663,
     "radar": "KDOX",
     "radar_station": "KDOX",
     "notes": null,
     "name": "Skydive Chesapeake",
     "key": "skydive-chesapeake",
-    "field_elevation_ft": 67
+    "field_elevation_ft": 64,
+    "metar_note": "Weather from KESN (Easton/Newnam Field), ~14 nm SW — Ridgely Airpark (KRJD) has no METAR",
+    "runways": [
+      12
+    ]
   },
   "skydive-chicago": {
     "label": "Skydive Chicago",
@@ -703,7 +880,7 @@
     "country": "US",
     "state": "IL",
     "city": "Ottawa",
-    "icao": "8N2",
+    "icao": "KVYS",
     "lat": 41.3998,
     "lon": -88.7939,
     "radar": "KLOT",
@@ -711,7 +888,11 @@
     "notes": null,
     "name": "Skydive Chicago",
     "key": "skydive-chicago",
-    "field_elevation_ft": 692
+    "field_elevation_ft": 616,
+    "metar_note": "Weather from KVYS (Illinois Valley Regional), ~16 nm W — Skydive Chicago strip (8N2) has no METAR",
+    "runways": [
+      3
+    ]
   },
   "skydive-cincinnati": {
     "burble_dz_id": 419,
@@ -720,7 +901,7 @@
     "country": "US",
     "state": "OH",
     "city": "Waynesville",
-    "icao": "I67",
+    "icao": "KI68",
     "lat": 39.5581,
     "lon": -84.2606,
     "radar": "KILN",
@@ -728,7 +909,11 @@
     "notes": null,
     "name": "Skydive Cincinnati",
     "key": "skydive-cincinnati",
-    "field_elevation_ft": 894
+    "field_elevation_ft": 898,
+    "metar_note": null,
+    "runways": [
+      1
+    ]
   },
   "skydive-city-zephyrhills": {
     "label": "Skydive City Zephyrhills",
@@ -738,14 +923,19 @@
     "state": "FL",
     "city": "Zephyrhills",
     "icao": "KZPH",
-    "lat": 28.2282,
-    "lon": -82.1559,
+    "lat": 28.2267,
+    "lon": -82.1556,
     "radar": "KTBW",
     "radar_station": "KTBW",
     "notes": null,
     "name": "Skydive City Zephyrhills",
     "key": "skydive-city-zephyrhills",
-    "field_elevation_ft": 90
+    "field_elevation_ft": 90,
+    "metar_note": null,
+    "runways": [
+      1,
+      5
+    ]
   },
   "skydive-coastal-carolinas": {
     "burble_dz_id": 2521,
@@ -754,15 +944,19 @@
     "country": "US",
     "state": "SC",
     "city": "Aynor",
-    "icao": "3J1",
-    "lat": 33.9926,
-    "lon": -79.3056,
+    "icao": "KSUT",
+    "lat": 33.9293,
+    "lon": -78.0734,
     "radar": "KLTX",
     "radar_station": "KLTX",
     "notes": null,
     "name": "Skydive Coastal Carolinas",
     "key": "skydive-coastal-carolinas",
-    "field_elevation_ft": 32
+    "field_elevation_ft": 26,
+    "metar_note": null,
+    "runways": [
+      5
+    ]
   },
   "skydive-colorado": {
     "burble_dz_id": 8551,
@@ -770,16 +964,21 @@
     "label": "Skydive Colorado",
     "country": "US",
     "state": "CO",
-    "city": "Ca\u00f1on City",
-    "icao": "1V6",
-    "lat": 38.4284,
-    "lon": -105.1061,
+    "city": "Cañon City",
+    "icao": "K1V6",
+    "lat": 38.4286,
+    "lon": -105.1069,
     "radar": "KPUX",
     "radar_station": "KPUX",
     "notes": null,
     "name": "Skydive Colorado",
     "key": "skydive-colorado",
-    "field_elevation_ft": 5446
+    "field_elevation_ft": 5442,
+    "metar_note": null,
+    "runways": [
+      11,
+      17
+    ]
   },
   "skydive-cross-keys": {
     "burble_dz_id": 561,
@@ -788,7 +987,7 @@
     "country": "US",
     "state": "NJ",
     "city": "Williamstown",
-    "icao": "17N",
+    "icao": "KPHL",
     "lat": 39.7056,
     "lon": -75.0339,
     "radar": "KDIX",
@@ -796,7 +995,11 @@
     "notes": null,
     "name": "Skydive Cross Keys",
     "key": "skydive-cross-keys",
-    "field_elevation_ft": 185
+    "field_elevation_ft": 162,
+    "metar_note": "Weather from KPHL (Philadelphia International), ~14 nm NW — Cross Keys (17N) has no METAR",
+    "runways": [
+      9
+    ]
   },
   "skydive-danielson": {
     "burble_dz_id": 4661,
@@ -805,15 +1008,19 @@
     "country": "US",
     "state": "CT",
     "city": "Danielson",
-    "icao": "LZD",
-    "lat": 41.8198,
+    "icao": "KIJD",
+    "lat": 41.8197,
     "lon": -71.901,
     "radar": "KBOX",
     "radar_station": "KBOX",
     "notes": null,
     "name": "Skydive Danielson",
     "key": "skydive-danielson",
-    "field_elevation_ft": 451
+    "field_elevation_ft": 238,
+    "metar_note": "Weather from KIJD (Windham Airport), ~13 nm SW — Danielson (LZD) AWOS is not METAR-distributed",
+    "runways": [
+      5
+    ]
   },
   "skydive-east-tennessee": {
     "burble_dz_id": 14631,
@@ -822,15 +1029,19 @@
     "country": "US",
     "state": "TN",
     "city": "Lenoir City",
-    "icao": "TN44",
-    "lat": 35.7881,
-    "lon": -84.2466,
+    "icao": "KGKT",
+    "lat": 36.015,
+    "lon": -83.5475,
     "radar": "KMRX",
     "radar_station": "KMRX",
     "notes": null,
     "name": "Skydive East Tennessee",
     "key": "skydive-east-tennessee",
-    "field_elevation_ft": 850
+    "field_elevation_ft": 1000,
+    "metar_note": "Weather from KGKT (Gatlinburg-Pigeon Forge Airport), ~20 nm SE — Dumplin Valley (86TN) has no METAR",
+    "runways": [
+      5
+    ]
   },
   "skydive-elsinore": {
     "burble_dz_id": 189,
@@ -839,15 +1050,19 @@
     "country": "US",
     "state": "CA",
     "city": "Elsinore",
-    "icao": "F70",
-    "lat": 33.6267,
-    "lon": -117.3339,
+    "icao": "KF70",
+    "lat": 33.633,
+    "lon": -117.3016,
     "radar": "KSOX",
     "radar_station": "KSOX",
     "notes": null,
     "name": "Skydive Elsinore",
     "key": "skydive-elsinore",
-    "field_elevation_ft": 1298
+    "field_elevation_ft": 1262,
+    "metar_note": "Weather from KF70 (French Valley Airport), ~9 nm E — Skylark Field (CA89) has no METAR",
+    "runways": [
+      11
+    ]
   },
   "skydive-fargo": {
     "burble_dz_id": 911,
@@ -856,15 +1071,19 @@
     "country": "US",
     "state": "ND",
     "city": "West Fargo",
-    "icao": "D54",
-    "lat": 46.8903,
-    "lon": -96.9004,
+    "icao": "KFAR",
+    "lat": 46.9004,
+    "lon": -96.9185,
     "radar": "KMVX",
     "radar_station": "KMVX",
     "notes": null,
     "name": "Skydive Fargo",
     "key": "skydive-fargo",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 896,
+    "metar_note": "Weather from KFAR (Hector International), ~5 nm NE — Hawley Municipal (D54) has no METAR",
+    "runways": [
+      18
+    ]
   },
   "skydive-georgia": {
     "burble_dz_id": 18,
@@ -873,15 +1092,19 @@
     "country": "US",
     "state": "GA",
     "city": "Cedartown",
-    "icao": "6GE1",
-    "lat": 34.0167,
-    "lon": -85.15,
+    "icao": "KRMG",
+    "lat": 34.0185,
+    "lon": -85.1448,
     "radar": "KFFC",
     "radar_station": "KFFC",
     "notes": null,
     "name": "Skydive Georgia",
     "key": "skydive-georgia",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 974,
+    "metar_note": "Weather from KRMG (Rome Richard B Russell Regional), ~16 nm NE — Polk County (4A4) has no METAR",
+    "runways": [
+      10
+    ]
   },
   "skydive-houston": {
     "burble_dz_id": 3563,
@@ -890,15 +1113,19 @@
     "country": "US",
     "state": "TX",
     "city": "Waller",
-    "icao": "TS67",
-    "lat": 29.9936,
-    "lon": -95.9299,
+    "icao": "KTME",
+    "lat": 29.9928,
+    "lon": -95.9305,
     "radar": "KHGX",
     "radar_station": "KHGX",
     "notes": null,
     "name": "Skydive Houston",
     "key": "skydive-houston",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 235,
+    "metar_note": "Weather from KTME (Houston Executive Airport), ~11 nm S — Skydive Houston (37XA) has no METAR",
+    "runways": [
+      17
+    ]
   },
   "skydive-indianapolis": {
     "burble_dz_id": 36,
@@ -909,13 +1136,18 @@
     "city": "Frankfort",
     "icao": "KFKR",
     "lat": 40.2734,
-    "lon": -86.5621,
+    "lon": -86.5622,
     "radar": "KIND",
     "radar_station": "KIND",
     "notes": null,
     "name": "Skydive Indianapolis",
     "key": "skydive-indianapolis",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 861,
+    "metar_note": null,
+    "runways": [
+      4,
+      9
+    ]
   },
   "skydive-midwest": {
     "burble_dz_id": 359,
@@ -925,14 +1157,19 @@
     "state": "WI",
     "city": "Racine",
     "icao": "KRAC",
-    "lat": 42.7603,
-    "lon": -87.8152,
+    "lat": 42.7612,
+    "lon": -87.8139,
     "radar": "KMKX",
     "radar_station": "KMKX",
     "notes": null,
     "name": "Skydive Midwest",
     "key": "skydive-midwest",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 674,
+    "metar_note": null,
+    "runways": [
+      4,
+      14
+    ]
   },
   "skydive-milwaukee-sky-knights-spc": {
     "burble_dz_id": 11651,
@@ -949,7 +1186,12 @@
     "notes": null,
     "name": "Skydive Milwaukee / Sky Knights SPC",
     "key": "skydive-milwaukee-sky-knights-spc",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 860,
+    "metar_note": null,
+    "runways": [
+      8,
+      18
+    ]
   },
   "skydive-monroe": {
     "burble_dz_id": 261,
@@ -959,14 +1201,18 @@
     "state": "GA",
     "city": "Monroe",
     "icao": "KD73",
-    "lat": 33.7811,
-    "lon": -83.6924,
+    "lat": 33.7825,
+    "lon": -83.6928,
     "radar": "KFFC",
     "radar_station": "KFFC",
     "notes": null,
     "name": "Skydive Monroe",
     "key": "skydive-monroe",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 875,
+    "metar_note": null,
+    "runways": [
+      3
+    ]
   },
   "skydive-mountain-city": {
     "burble_dz_id": 12061,
@@ -975,15 +1221,19 @@
     "country": "US",
     "state": "TN",
     "city": "Mountain City",
-    "icao": "6A4",
-    "lat": 36.41778,
-    "lon": -81.825,
+    "icao": "KTRI",
+    "lat": 36.4178,
+    "lon": -81.8251,
     "radar": "KMRX",
     "radar_station": "KMRX",
     "notes": null,
     "name": "Skydive Mountain City",
     "key": "skydive-mountain-city",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 2224,
+    "metar_note": "Weather from KTRI (Tri-Cities Regional), ~28 nm W — Mountain City (6A4) has no METAR",
+    "runways": [
+      7
+    ]
   },
   "skydive-nepa": {
     "burble_dz_id": 12251,
@@ -993,14 +1243,19 @@
     "state": "PA",
     "city": "Factoryville",
     "icao": "KWBW",
-    "lat": 41.2975,
-    "lon": -75.8512,
+    "lat": 41.2973,
+    "lon": -75.8522,
     "radar": "KBGM",
     "radar_station": "KBGM",
     "notes": null,
     "name": "Skydive NEPA",
     "key": "skydive-nepa",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 544,
+    "metar_note": null,
+    "runways": [
+      7,
+      9
+    ]
   },
   "skydive-new-england": {
     "burble_dz_id": 2921,
@@ -1017,7 +1272,12 @@
     "notes": null,
     "name": "Skydive New England",
     "key": "skydive-new-england",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 603,
+    "metar_note": null,
+    "runways": [
+      7,
+      18
+    ]
   },
   "skydive-northstar-llc": {
     "burble_dz_id": 13261,
@@ -1026,15 +1286,19 @@
     "country": "US",
     "state": "WI",
     "city": "Eastman",
-    "icao": "KETB",
-    "lat": 43.4222,
-    "lon": -90.7054,
+    "icao": "KACQ",
+    "lat": 44.0735,
+    "lon": -93.5529,
     "radar": "KARX",
     "radar_station": "KARX",
     "notes": null,
     "name": "Skydive Northstar LLC",
     "key": "skydive-northstar-llc",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1127,
+    "metar_note": null,
+    "runways": [
+      15
+    ]
   },
   "skydive-orange": {
     "burble_dz_id": 390,
@@ -1044,14 +1308,18 @@
     "state": "VA",
     "city": "Orange",
     "icao": "KOMH",
-    "lat": 38.2489,
+    "lat": 38.2472,
     "lon": -78.0456,
     "radar": "KLWX",
     "radar_station": "KLWX",
     "notes": null,
     "name": "Skydive Orange",
     "key": "skydive-orange",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 464,
+    "metar_note": null,
+    "runways": [
+      8
+    ]
   },
   "skydive-palatka": {
     "burble_dz_id": null,
@@ -1060,7 +1328,7 @@
     "country": "US",
     "state": "FL",
     "city": "Palatka",
-    "icao": "K42J",
+    "icao": "K28J",
     "lat": 29.658,
     "lon": -81.6901,
     "radar": "KJAX",
@@ -1068,7 +1336,12 @@
     "notes": "Non-Burble DZ. Weather source is Palatka Municipal / Lt. Kay Larkin Field (28J).",
     "name": "Skydive Palatka",
     "key": "skydive-palatka",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 48,
+    "metar_note": null,
+    "runways": [
+      9,
+      17
+    ]
   },
   "skydive-paraclete-xp": {
     "burble_dz_id": 125,
@@ -1079,13 +1352,18 @@
     "city": "Raeford",
     "icao": "KHFF",
     "lat": 35.0363,
-    "lon": -79.497,
+    "lon": -79.4975,
     "radar": "KRAX",
     "radar_station": "KRAX",
     "notes": null,
     "name": "Skydive Paraclete XP",
     "key": "skydive-paraclete-xp",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 376,
+    "metar_note": null,
+    "runways": [
+      12,
+      16
+    ]
   },
   "skydive-pennsylvania": {
     "burble_dz_id": 3293,
@@ -1094,15 +1372,19 @@
     "country": "US",
     "state": "PA",
     "city": "Grove City",
-    "icao": "29D",
-    "lat": 41.1466,
-    "lon": -80.1673,
+    "icao": "KUCP",
+    "lat": 41.146,
+    "lon": -80.1678,
     "radar": "KPBZ",
     "radar_station": "KPBZ",
     "notes": null,
     "name": "Skydive Pennsylvania",
     "key": "skydive-pennsylvania",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1371,
+    "metar_note": "Weather from KUCP (New Castle Municipal), ~13 nm SW — Grove City Municipal (29D) has no METAR",
+    "runways": [
+      10
+    ]
   },
   "skydive-perris-school": {
     "burble_dz_id": 99,
@@ -1111,15 +1393,19 @@
     "country": "US",
     "state": "CA",
     "city": "Perris",
-    "icao": "KCPM",
-    "lat": 33.889,
-    "lon": -117.605,
+    "icao": "KRIV",
+    "lat": 33.7646,
+    "lon": -117.219,
     "radar": "KSOX",
     "radar_station": "KSOX",
     "notes": null,
     "name": "Skydive Perris School",
     "key": "skydive-perris-school",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1413,
+    "metar_note": "Weather from KRIV (March Air Reserve Base), ~7 nm N — Perris Valley (L65) has no METAR",
+    "runways": [
+      15
+    ]
   },
   "skydive-philadelphia": {
     "burble_dz_id": 51,
@@ -1128,7 +1414,7 @@
     "country": "US",
     "state": "NJ",
     "city": "Williamstown",
-    "icao": "17N",
+    "icao": "KPHL",
     "lat": 39.7056,
     "lon": -75.0339,
     "radar": "KDIX",
@@ -1136,7 +1422,11 @@
     "notes": null,
     "name": "Skydive Philadelphia",
     "key": "skydive-philadelphia",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 162,
+    "metar_note": "Weather from KPHL (Philadelphia International), ~14 nm NW — Cross Keys (17N) has no METAR",
+    "runways": [
+      9
+    ]
   },
   "skydive-puerto-rico": {
     "burble_dz_id": 4843,
@@ -1146,14 +1436,18 @@
     "state": "PR",
     "city": "Arecibo",
     "icao": "TJAB",
-    "lat": 18.45,
-    "lon": -66.675,
+    "lat": 18.4509,
+    "lon": -66.6754,
     "radar": "TJUA",
     "radar_station": "TJUA",
     "notes": null,
     "name": "Skydive Puerto Rico",
     "key": "skydive-puerto-rico",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 21,
+    "metar_note": null,
+    "runways": [
+      8
+    ]
   },
   "skydive-raleigh": {
     "burble_dz_id": 14056,
@@ -1163,14 +1457,18 @@
     "state": "NC",
     "city": "Roxboro",
     "icao": "KTDF",
-    "lat": 36.2849,
-    "lon": -78.9842,
+    "lat": 36.2846,
+    "lon": -78.9846,
     "radar": "KRAX",
     "radar_station": "KRAX",
     "notes": null,
     "name": "Skydive Raleigh",
     "key": "skydive-raleigh",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 609,
+    "metar_note": null,
+    "runways": [
+      6
+    ]
   },
   "skydive-san-diego": {
     "burble_dz_id": 3393,
@@ -1187,7 +1485,11 @@
     "notes": null,
     "name": "Skydive San Diego",
     "key": "skydive-san-diego",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 526,
+    "metar_note": null,
+    "runways": [
+      8
+    ]
   },
   "skydive-sebastian": {
     "burble_dz_id": 396,
@@ -1196,15 +1498,20 @@
     "country": "US",
     "state": "FL",
     "city": "Sebastian",
-    "icao": "X26",
-    "lat": 27.8128,
+    "icao": "KX26",
+    "lat": 27.8133,
     "lon": -80.4956,
     "radar": "KMLB",
     "radar_station": "KMLB",
     "notes": null,
     "name": "Skydive Sebastian",
     "key": "skydive-sebastian",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 22,
+    "metar_note": null,
+    "runways": [
+      5,
+      10
+    ]
   },
   "skydive-seneca-lake": {
     "burble_dz_id": 13926,
@@ -1213,15 +1520,19 @@
     "country": "US",
     "state": "NY",
     "city": "Ovid",
-    "icao": "D48",
-    "lat": 42.6764,
-    "lon": -76.7966,
+    "icao": "KPEO",
+    "lat": 42.6548,
+    "lon": -76.7963,
     "radar": "KBUF",
     "radar_station": "KBUF",
     "notes": null,
     "name": "Skydive Seneca Lake",
     "key": "skydive-seneca-lake",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1062,
+    "metar_note": "Weather from KPEO (Penn Yan Airport), ~11 nm W — Ovid Airport (D82) has no METAR",
+    "runways": [
+      1
+    ]
   },
   "skydive-shenandoah": {
     "burble_dz_id": 5255,
@@ -1230,15 +1541,19 @@
     "country": "US",
     "state": "VA",
     "city": "New Market",
-    "icao": "8W2",
-    "lat": 38.6542,
-    "lon": -78.7097,
+    "icao": "K8W2",
+    "lat": 38.656,
+    "lon": -78.7085,
     "radar": "KFCX",
     "radar_station": "KFCX",
     "notes": null,
     "name": "Skydive Shenandoah",
     "key": "skydive-shenandoah",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 963,
+    "metar_note": null,
+    "runways": [
+      6
+    ]
   },
   "skydive-skydown": {
     "burble_dz_id": 14601,
@@ -1247,7 +1562,7 @@
     "country": "US",
     "state": "PA",
     "city": "Kutztown",
-    "icao": "9N8",
+    "icao": "KABE",
     "lat": 40.5217,
     "lon": -75.775,
     "radar": "KDIX",
@@ -1255,7 +1570,11 @@
     "notes": null,
     "name": "SKYDIVE SKYDOWN",
     "key": "skydive-skydown",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 486,
+    "metar_note": "Weather from KABE (Lehigh Valley International), ~12 nm NE — Kutztown (9N8) has no METAR",
+    "runways": [
+      8
+    ]
   },
   "skydive-south-boston": {
     "burble_dz_id": 8301,
@@ -1264,15 +1583,20 @@
     "country": "US",
     "state": "VA",
     "city": "South Boston",
-    "icao": "W78",
-    "lat": 36.7097,
-    "lon": -78.8486,
+    "icao": "KW78",
+    "lat": 36.7094,
+    "lon": -78.8483,
     "radar": "KFCX",
     "radar_station": "KFCX",
     "notes": null,
     "name": "Skydive South Boston",
     "key": "skydive-south-boston",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 420,
+    "metar_note": null,
+    "runways": [
+      1,
+      6
+    ]
   },
   "skydive-stl": {
     "burble_dz_id": 8171,
@@ -1282,14 +1606,19 @@
     "state": "IL",
     "city": "Alton",
     "icao": "KALN",
-    "lat": 38.8903,
+    "lat": 38.8899,
     "lon": -90.046,
     "radar": "KLSX",
     "radar_station": "KLSX",
     "notes": null,
     "name": "Skydive STL",
     "key": "skydive-stl",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 544,
+    "metar_note": null,
+    "runways": [
+      11,
+      17
+    ]
   },
   "skydive-tecumseh": {
     "burble_dz_id": 7,
@@ -1300,13 +1629,17 @@
     "city": "Tecumseh",
     "icao": "KTEW",
     "lat": 42.5658,
-    "lon": -84.4233,
+    "lon": -84.4232,
     "radar": "KDTX",
     "radar_station": "KDTX",
     "notes": null,
     "name": "Skydive Tecumseh",
     "key": "skydive-tecumseh",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 919,
+    "metar_note": null,
+    "runways": [
+      10
+    ]
   },
   "skydive-tennessee": {
     "burble_dz_id": 15,
@@ -1323,7 +1656,13 @@
     "notes": null,
     "name": "Skydive Tennessee",
     "key": "skydive-tennessee",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1084,
+    "metar_note": null,
+    "runways": [
+      6,
+      9,
+      18
+    ]
   },
   "skydive-the-falls": {
     "burble_dz_id": 6891,
@@ -1333,14 +1672,19 @@
     "state": "NY",
     "city": "Niagara Falls",
     "icao": "KIAG",
-    "lat": 43.1073,
+    "lat": 43.1084,
     "lon": -78.9462,
     "radar": "KBUF",
     "radar_station": "KBUF",
     "notes": null,
     "name": "Skydive the Falls",
     "key": "skydive-the-falls",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 592,
+    "metar_note": null,
+    "runways": [
+      6,
+      10
+    ]
   },
   "skydive-the-gulf": {
     "burble_dz_id": 8281,
@@ -1349,15 +1693,19 @@
     "country": "US",
     "state": "AL",
     "city": "Foley",
-    "icao": "5R4",
-    "lat": 30.4663,
-    "lon": -87.877,
+    "icao": "KJKA",
+    "lat": 30.4277,
+    "lon": -87.701,
     "radar": "KMOB",
     "radar_station": "KMOB",
     "notes": null,
     "name": "Skydive the Gulf",
     "key": "skydive-the-gulf",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 74,
+    "metar_note": "Weather from KJKA (Jack Edwards/Gulf Shores Intl), ~8 nm S — Foley Municipal (5R4) has no METAR",
+    "runways": [
+      18
+    ]
   },
   "skydive-the-ranch-school": {
     "burble_dz_id": 3451,
@@ -1366,15 +1714,19 @@
     "country": "US",
     "state": "NY",
     "city": "Gardiner",
-    "icao": "NY1",
-    "lat": 41.679,
-    "lon": -74.1446,
+    "icao": "KSWF",
+    "lat": 41.6668,
+    "lon": -74.1494,
     "radar": "KALY",
     "radar_station": "KALY",
     "notes": null,
     "name": "Skydive the Ranch School",
     "key": "skydive-the-ranch-school",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 370,
+    "metar_note": "Weather from KSWF (NY Stewart Intl), ~10 nm S — Gardiner (5NY5) has no METAR",
+    "runways": [
+      12
+    ]
   },
   "skydive-the-rock": {
     "burble_dz_id": 861,
@@ -1391,7 +1743,13 @@
     "notes": null,
     "name": "Skydive The Rock",
     "key": "skydive-the-rock",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 808,
+    "metar_note": null,
+    "runways": [
+      4,
+      14,
+      18
+    ]
   },
   "skydive-the-volcano": {
     "burble_dz_id": 13686,
@@ -1408,7 +1766,12 @@
     "notes": null,
     "name": "Skydive The Volcano",
     "key": "skydive-the-volcano",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 38,
+    "metar_note": null,
+    "runways": [
+      3,
+      8
+    ]
   },
   "skydive-the-wasatch": {
     "burble_dz_id": 48,
@@ -1425,7 +1788,11 @@
     "notes": null,
     "name": "Skydive the Wasatch",
     "key": "skydive-the-wasatch",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 5637,
+    "metar_note": null,
+    "runways": [
+      4
+    ]
   },
   "skydive-twin-cities": {
     "burble_dz_id": 416,
@@ -1434,15 +1801,19 @@
     "country": "US",
     "state": "WI",
     "city": "Baldwin",
-    "icao": "21D",
-    "lat": 44.9666,
-    "lon": -92.3724,
+    "icao": "KHUD",
+    "lat": 44.967,
+    "lon": -92.388,
     "radar": "KMPX",
     "radar_station": "KMPX",
     "notes": null,
     "name": "Skydive Twin Cities",
     "key": "skydive-twin-cities",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1050,
+    "metar_note": "Weather from KHUD (Hudson Municipal), ~17 nm W — Baldwin Airport (WI14) has no METAR",
+    "runways": [
+      18
+    ]
   },
   "skydive-utah": {
     "burble_dz_id": 385,
@@ -1453,13 +1824,18 @@
     "city": "Ogden",
     "icao": "KOGD",
     "lat": 41.1959,
-    "lon": -112.012,
+    "lon": -112.0122,
     "radar": "KMTX",
     "radar_station": "KMTX",
     "notes": null,
     "name": "Skydive Utah",
     "key": "skydive-utah",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 4473,
+    "metar_note": null,
+    "runways": [
+      3,
+      17
+    ]
   },
   "skydive-west-plains": {
     "burble_dz_id": 2661,
@@ -1469,14 +1845,18 @@
     "state": "MO",
     "city": "West Plains",
     "icao": "KUNO",
-    "lat": 36.8781,
+    "lat": 36.8784,
     "lon": -91.9027,
     "radar": "KSGF",
     "radar_station": "KSGF",
     "notes": null,
     "name": "Skydive West Plains",
     "key": "skydive-west-plains",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 1228,
+    "metar_note": null,
+    "runways": [
+      18
+    ]
   },
   "skydive-windy-city": {
     "burble_dz_id": 12691,
@@ -1493,7 +1873,11 @@
     "notes": "Located approximately 3 miles from Lake Michigan and 30 miles from downtown Chicago",
     "name": "Skydive Windy City",
     "key": "skydive-windy-city",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 655,
+    "metar_note": null,
+    "runways": [
+      2
+    ]
   },
   "skydivekc": {
     "burble_dz_id": 267,
@@ -1503,14 +1887,18 @@
     "state": "MO",
     "city": "Butler",
     "icao": "KBUM",
-    "lat": 38.28977,
-    "lon": -94.34013,
+    "lat": 38.2898,
+    "lon": -94.3401,
     "radar": "KEAX",
     "radar_station": "KEAX",
     "notes": null,
     "name": "SkydiveKC",
     "key": "skydivekc",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 894,
+    "metar_note": null,
+    "runways": [
+      18
+    ]
   },
   "skydivetc": {
     "burble_dz_id": 14231,
@@ -1520,14 +1908,19 @@
     "state": "MN",
     "city": "Stanton",
     "icao": "KSYN",
-    "lat": 44.4756,
-    "lon": -92.8433,
+    "lat": 44.4755,
+    "lon": -93.0163,
     "radar": "KMPX",
     "radar_station": "KMPX",
     "notes": null,
     "name": "SkydiveTC",
     "key": "skydivetc",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 920,
+    "metar_note": null,
+    "runways": [
+      9,
+      18
+    ]
   },
   "start-skydiving-llc": {
     "burble_dz_id": 70,
@@ -1537,14 +1930,19 @@
     "state": "OH",
     "city": "Middletown",
     "icao": "KMWO",
-    "lat": 39.5317,
-    "lon": -84.3953,
+    "lat": 39.5318,
+    "lon": -84.3964,
     "radar": "KILN",
     "radar_station": "KILN",
     "notes": null,
     "name": "Start Skydiving, LLC",
     "key": "start-skydiving-llc",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 651,
+    "metar_note": null,
+    "runways": [
+      5,
+      8
+    ]
   },
   "texas-skydiving": {
     "burble_dz_id": 2401,
@@ -1554,14 +1952,18 @@
     "state": "TX",
     "city": "Lexington",
     "icao": "KGYB",
-    "lat": 30.4125,
-    "lon": -96.9667,
+    "lat": 30.1693,
+    "lon": -96.98,
     "radar": "KGRK",
     "radar_station": "KGRK",
     "notes": null,
     "name": "Texas Skydiving",
     "key": "texas-skydiving",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 484,
+    "metar_note": null,
+    "runways": [
+      17
+    ]
   },
   "ultimate-skydiving-adventures": {
     "burble_dz_id": 12431,
@@ -1578,7 +1980,12 @@
     "notes": null,
     "name": "Ultimate Skydiving Adventures",
     "key": "ultimate-skydiving-adventures",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 913,
+    "metar_note": null,
+    "runways": [
+      2,
+      9
+    ]
   },
   "virginia-skydiving-center": {
     "burble_dz_id": 5932,
@@ -1588,14 +1995,19 @@
     "state": "VA",
     "city": "Chesapeake",
     "icao": "KPVG",
-    "lat": 36.7802,
-    "lon": -76.4488,
+    "lat": 36.7808,
+    "lon": -76.4513,
     "radar": "KAKQ",
     "radar_station": "KAKQ",
     "notes": null,
     "name": "Virginia Skydiving Center",
     "key": "virginia-skydiving-center",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 28,
+    "metar_note": null,
+    "runways": [
+      2,
+      10
+    ]
   },
   "wisconsin-skydiving-center": {
     "burble_dz_id": 43,
@@ -1604,15 +2016,19 @@
     "country": "US",
     "state": "WI",
     "city": "Racine",
-    "icao": "C89",
-    "lat": 42.7039,
-    "lon": -87.9583,
+    "icao": "KENW",
+    "lat": 42.7032,
+    "lon": -87.959,
     "radar": "KMKX",
     "radar_station": "KMKX",
     "notes": null,
     "name": "Wisconsin Skydiving Center",
     "key": "wisconsin-skydiving-center",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 788,
+    "metar_note": "Weather from KENW (Kenosha Regional), ~7 nm S — Sylvania Airport (C89) has no METAR",
+    "runways": [
+      8
+    ]
   },
   "wnyskydiving": {
     "burble_dz_id": 257,
@@ -1622,13 +2038,18 @@
     "state": "NY",
     "city": "Olean",
     "icao": "KOLE",
-    "lat": 42.2413,
-    "lon": -78.3716,
+    "lat": 42.2412,
+    "lon": -78.3714,
     "radar": "KBUF",
     "radar_station": "KBUF",
     "notes": null,
     "name": "WNYSkydiving",
     "key": "wnyskydiving",
-    "field_elevation_ft": 500
+    "field_elevation_ft": 2135,
+    "metar_note": null,
+    "runways": [
+      4,
+      16
+    ]
   }
 }

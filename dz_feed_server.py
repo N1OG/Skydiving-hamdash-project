@@ -45,7 +45,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Fallback version used when version.json is not present (standalone / Pi mode).
 # This is the ONLY version string in this file — do not add others.
-__version__ = "1.1.15"
+__version__ = "1.2.0"
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -1275,6 +1275,7 @@ class Handler(BaseHTTPRequestHandler):
                     "burble_public_url": prof.get("burble_public_url"),
                     "radar_station": radar_station,
                     "field_elevation_ft": prof.get("field_elevation_ft"),
+                    "metar_note": prof.get("metar_note") or None,
                 },
                 "dz_metadata_ok": dz_ok,
                 "dz_metadata_missing": dz_missing,
