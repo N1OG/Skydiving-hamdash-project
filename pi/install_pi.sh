@@ -1,164 +1,197 @@
 #!/usr/bin/env bash
-# Skydiving Dashboard — Raspberry Pi Installer
-# Run with: curl -fsSL <URL>/install_pi.sh | bash
-# Or:       bash install_pi.sh
-#
-# What this does:
-#   1. Downloads the latest release zip from GitHub
-#   2. Wipes any previous installation (clean slate)
-#   3. Installs Python 3 and Chromium if not already present
-#   5. Creates a desktop launcher
-#   6. Starts the dashboard immediately
+# Skydiving Dashboard — Pi installer / updater
+# Usage:
+#   First install : bash install_pi.sh
+#   Update        : bash install_pi.sh --update
 set -euo pipefail
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-RELEASE_URL="https://github.com/N1OG/Skydiving-hamdash-project/releases/latest/download/SkydivingDashboard-RaspberryPi-Kiosk.zip"
-INSTALL_DIR="$HOME/skydiving-dashboard"
-DISPLAY_VAR=":0"
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-info()  { echo ""; echo ">>> $*"; }
-ok()    { echo "    OK: $*"; }
-die()   { echo ""; echo "ERROR: $*" >&2; exit 1; }
-
-# ── Step 1: Download latest release ──────────────────────────────────────────
-info "Downloading latest release..."
-TMP_ZIP="$(mktemp /tmp/skydiving-dashboard-XXXXXX.zip)"
-trap 'rm -f "$TMP_ZIP"' EXIT
-
-if command -v curl &>/dev/null; then
-    curl -fsSL "$RELEASE_URL" -o "$TMP_ZIP"
-elif command -v wget &>/dev/null; then
-    wget -q "$RELEASE_URL" -O "$TMP_ZIP"
-else
-    die "Neither curl nor wget found. Install one and retry."
-fi
-ok "Downloaded"
-
-# ── Step 2: Wipe old installation ─────────────────────────────────────────────
-info "Removing old installation (if any)..."
-
-pkill -f dz_feed_server.py 2>/dev/null && ok "Stopped old server" || true
-pkill -f chromium          2>/dev/null && ok "Stopped old chromium" || true
-sleep 0.5
-
-rm -rf "$INSTALL_DIR"
-ok "Removed $INSTALL_DIR"
-
-# ── Step 3: Extract new release ───────────────────────────────────────────────
-info "Extracting release..."
-mkdir -p "$INSTALL_DIR"
-unzip -q "$TMP_ZIP" -d "$INSTALL_DIR"
-
-# Flatten a single top-level subdirectory if the zip was packaged that way
-CONTENTS=("$INSTALL_DIR"/*)
-if [ "${#CONTENTS[@]}" -eq 1 ] && [ -d "${CONTENTS[0]}" ]; then
-    mv "${CONTENTS[0]}"/* "$INSTALL_DIR/"
-    rmdir "${CONTENTS[0]}"
-    ok "Flattened zip subdirectory"
-fi
-
-chmod +x "$INSTALL_DIR"/*.sh 2>/dev/null || true
-ok "Extracted to $INSTALL_DIR"
-
-# ── Step 4: Install system dependencies ───────────────────────────────────────
-info "Installing dependencies (python3, chromium)..."
-sudo apt-get update -qq
-
-# Pi OS has used both 'chromium-browser' and 'chromium' across versions
-CHROMIUM_PKG="chromium"
-apt-cache show chromium-browser &>/dev/null && CHROMIUM_PKG="chromium-browser"
-
-sudo apt-get install -y python3 "$CHROMIUM_PKG"
-ok "Dependencies installed"
-
-# ── Step 5: Write start_kiosk.sh with correct runtime paths ───────────────────
-info "Writing start script..."
-cat > "$INSTALL_DIR/start_kiosk.sh" <<SCRIPT
-#!/usr/bin/env bash
-set -e
-
-APP_DIR="$INSTALL_DIR"
-cd "\$APP_DIR"
-
-export DISPLAY=$DISPLAY_VAR
-export XAUTHORITY="$HOME/.Xauthority"
-
-echo "Stopping old processes..."
-pkill -f dz_feed_server.py 2>/dev/null || true
-pkill -f chromium          2>/dev/null || true
-sleep 0.5
-
-echo "Starting server..."
-python3 "\$APP_DIR/dz_feed_server.py" --host 127.0.0.1 --port 8765 \
-    > "\$APP_DIR/server.log" 2>&1 &
-
-echo "Waiting for server..."
-for i in \$(seq 1 40); do
-    if curl -s http://127.0.0.1:8765/status.json >/dev/null 2>&1; then
-        echo "Server ready"
-        break
-    fi
-    sleep 0.25
-done
-
-# Use whichever Chromium binary is installed
-CHROMIUM_BIN=""
-for bin in chromium-browser chromium; do
-    if command -v "\$bin" &>/dev/null; then
-        CHROMIUM_BIN="\$bin"
-        break
-    fi
-done
-[ -n "\$CHROMIUM_BIN" ] || { echo "ERROR: Chromium not found"; exit 1; }
-
-echo "Launching with \$CHROMIUM_BIN..."
-"\$CHROMIUM_BIN" \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --incognito \
-  http://127.0.0.1:8765/dashboard.html > "\$APP_DIR/browser.log" 2>&1 &
-
-disown
-SCRIPT
-
-chmod +x "$INSTALL_DIR/start_kiosk.sh"
-ok "start_kiosk.sh written"
-
-# ── Step 6: Desktop launcher ───────────────────────────────────────────────────
-info "Creating desktop launcher..."
+# ─── Paths ────────────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PI_DIR="$APP_DIR/pi"
+CONFIG_DIR="$APP_DIR/config"
 DESKTOP_DIR="$HOME/Desktop"
-mkdir -p "$DESKTOP_DIR"
+LAUNCHER="$DESKTOP_DIR/Skydiving Dashboard.desktop"
 
-cat > "$DESKTOP_DIR/Skydiving Dashboard.desktop" <<DESKTOP
+# ─── GitHub release info ──────────────────────────────────────────────────────
+GITHUB_REPO="N1OG/Skydiving-hamdash-project"
+RELEASE_API="https://api.github.com/repos/$GITHUB_REPO/releases/latest"
+
+# ─── User-owned config files — never overwritten on update ───────────────────
+# These store the user's active DZ selection and custom jump profiles.
+PRESERVE_FILES=(
+    "config/active_dz.json"
+    "config/jump_profiles.json"
+    "config/manual_overrides.json"
+)
+
+# ─── Files always replaced on update ─────────────────────────────────────────
+UPDATE_FILES=(
+    "dashboard.html"
+    "dz_feed_server.py"
+    "version.json"
+    "config/dz_profiles.json"
+    "config/dz_list.json"
+    "pi/install_pi.sh"
+    "pi/start_kiosk.sh"
+)
+
+# ──────────────────────────────────────────────────────────────────────────────
+do_first_install() {
+    echo "=== Skydiving Dashboard — First Install ==="
+
+    echo "Installing dependencies (chromium, python3, curl, unzip)..."
+    sudo apt update
+    sudo apt install -y python3 chromium-browser curl unzip \
+        || sudo apt install -y python3 chromium curl unzip
+
+    mkdir -p "$DESKTOP_DIR"
+
+    cat > "$LAUNCHER" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Skydiving Dashboard
-Comment=Launch Skydiving Dashboard kiosk
-Exec=$INSTALL_DIR/start_kiosk.sh
+Comment=Launch Skydiving Dashboard (kiosk)
+Exec=$PI_DIR/start_kiosk.sh
 Icon=utilities-terminal
 Terminal=false
 Categories=Utility;
-DESKTOP
+EOF
+    chmod +x "$LAUNCHER"
 
-chmod +x "$DESKTOP_DIR/Skydiving Dashboard.desktop"
-ok "Desktop launcher created"
+    chmod +x "$PI_DIR/start_kiosk.sh" || true
+    chmod +x "$PI_DIR/install_pi.sh"  || true
 
-# ── Step 8: Launch immediately ─────────────────────────────────────────────────
-info "Starting dashboard now..."
-bash "$INSTALL_DIR/start_kiosk.sh" || true
+    echo ""
+    echo "Done. Double-click to launch: $LAUNCHER"
+    echo "To update in the future, run:  bash $PI_DIR/install_pi.sh --update"
+}
 
-# ── Done ───────────────────────────────────────────────────────────────────────
-echo ""
-echo "======================================================="
-echo "  Skydiving Dashboard installed successfully!"
-echo ""
-echo "  Install directory : $INSTALL_DIR"
-echo "  Desktop launcher  : $DESKTOP_DIR/Skydiving Dashboard.desktop"
-echo ""
-echo "  To start manually:"
-echo "    bash $INSTALL_DIR/start_kiosk.sh"
-echo ""
-echo "  To reinstall cleanly, just run this script again."
-echo "======================================================="
+# ──────────────────────────────────────────────────────────────────────────────
+do_update() {
+    echo "=== Skydiving Dashboard — Update ==="
+
+    # Check for required tools
+    for cmd in curl unzip python3; do
+        if ! command -v "$cmd" &>/dev/null; then
+            echo "Installing missing tool: $cmd"
+            sudo apt install -y "$cmd"
+        fi
+    done
+
+    # ── Get latest release info from GitHub ───────────────────────────────────
+    echo "Checking latest release on GitHub..."
+    RELEASE_JSON=$(curl -fsSL "$RELEASE_API")
+
+    LATEST_TAG=$(echo "$RELEASE_JSON" | python3 -c \
+        "import json,sys; print(json.load(sys.stdin)['tag_name'])")
+
+    CURRENT_VERSION="unknown"
+    if [ -f "$APP_DIR/version.json" ]; then
+        CURRENT_VERSION=$(python3 -c \
+            "import json; print(json.load(open('$APP_DIR/version.json')).get('version','unknown'))" \
+            2>/dev/null || echo "unknown")
+    fi
+
+    echo "  Installed : $CURRENT_VERSION"
+    echo "  Latest    : $LATEST_TAG"
+
+    if [ "$CURRENT_VERSION" = "${LATEST_TAG#v}" ]; then
+        echo "Already up to date. Nothing to do."
+        exit 0
+    fi
+
+    # ── Find the Pi zip asset URL ──────────────────────────────────────────────
+    ZIP_URL=$(echo "$RELEASE_JSON" | python3 -c "
+import json, sys
+assets = json.load(sys.stdin)['assets']
+for a in assets:
+    if 'pi' in a['name'].lower() and a['name'].endswith('.zip'):
+        print(a['browser_download_url'])
+        break
+")
+
+    if [ -z "$ZIP_URL" ]; then
+        echo "ERROR: Could not find a Pi zip asset in the latest release."
+        echo "  Release: $LATEST_TAG"
+        echo "  Check: https://github.com/$GITHUB_REPO/releases/latest"
+        exit 1
+    fi
+
+    echo "  Downloading: $ZIP_URL"
+
+    # ── Download and extract to a temp directory ───────────────────────────────
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+
+    curl -fsSL -o "$TMP_DIR/release.zip" "$ZIP_URL"
+    unzip -q "$TMP_DIR/release.zip" -d "$TMP_DIR/extracted"
+
+    # The zip may have a single top-level folder — find the root inside it
+    EXTRACTED_ROOT=$(find "$TMP_DIR/extracted" -maxdepth 1 -mindepth 1 -type d | head -1)
+    if [ -z "$EXTRACTED_ROOT" ]; then
+        EXTRACTED_ROOT="$TMP_DIR/extracted"
+    fi
+
+    # ── Back up user config files ──────────────────────────────────────────────
+    echo "Backing up user config files..."
+    BACKUP_DIR="$TMP_DIR/user_backup"
+    mkdir -p "$BACKUP_DIR/config"
+    for rel_path in "${PRESERVE_FILES[@]}"; do
+        src="$APP_DIR/$rel_path"
+        if [ -f "$src" ]; then
+            cp "$src" "$BACKUP_DIR/$rel_path"
+            echo "  Preserved: $rel_path"
+        fi
+    done
+
+    # ── Copy updated files ─────────────────────────────────────────────────────
+    echo "Installing updated files..."
+    for rel_path in "${UPDATE_FILES[@]}"; do
+        src="$EXTRACTED_ROOT/$rel_path"
+        dst="$APP_DIR/$rel_path"
+        if [ -f "$src" ]; then
+            mkdir -p "$(dirname "$dst")"
+            cp "$src" "$dst"
+            echo "  Updated: $rel_path"
+        else
+            echo "  WARNING: $rel_path not found in release zip — skipped"
+        fi
+    done
+
+    # ── Restore user config files ──────────────────────────────────────────────
+    echo "Restoring user config files..."
+    for rel_path in "${PRESERVE_FILES[@]}"; do
+        src="$BACKUP_DIR/$rel_path"
+        dst="$APP_DIR/$rel_path"
+        if [ -f "$src" ]; then
+            cp "$src" "$dst"
+            echo "  Restored: $rel_path"
+        fi
+    done
+
+    # ── Fix permissions ────────────────────────────────────────────────────────
+    chmod +x "$PI_DIR/start_kiosk.sh" || true
+    chmod +x "$PI_DIR/install_pi.sh"  || true
+
+    # ── Restart the server ─────────────────────────────────────────────────────
+    echo "Restarting dashboard server..."
+    pkill -f dz_feed_server.py 2>/dev/null || true
+    sleep 1
+    cd "$APP_DIR"
+    nohup python3 dz_feed_server.py --host 127.0.0.1 --port 8765 \
+        > "$APP_DIR/server.log" 2>&1 &
+
+    echo ""
+    echo "=== Update complete: $CURRENT_VERSION → $LATEST_TAG ==="
+    echo "Server restarted. Refresh the dashboard to see changes."
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Main
+# ──────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "--update" ]; then
+    do_update
+else
+    do_first_install
+fi
