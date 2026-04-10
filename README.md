@@ -6,9 +6,7 @@ Local, fullscreen skydiving weather decision dashboard designed for drop zones, 
 
 ---
 
-<img width="1920" height="1080" alt="Screenshot 2026-02-08 142009" src="https://github.com/user-attachments/assets/3cbd47db-52a5-4c39-a51b-ac83fc7c8d00" />
-<img width="477" height="580" alt="Screenshot 2026-02-08 164851" src="https://github.com/user-attachments/assets/b37cdeaf-3f69-45dc-bf93-a312c1cb19a8" />
-
+<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/1bebdd71-a218-477d-a5e9-cfbcac334115" />
 ---
 
 ## Features
