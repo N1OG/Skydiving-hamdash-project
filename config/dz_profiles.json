@@ -554,6 +554,27 @@
       14
     ]
   },
+  "maytown-sport-parachute-club": {
+    "burble_dz_id": -1,
+    "burble_public_url": "https://jumprun.app/MSPC/public",
+    "label": "Maytown Sport Parachute Club",
+    "country": "US",
+    "state": "PA",
+    "city": "Maytown",
+    "icao": "KMDT",
+    "lat": 40.0897,
+    "lon": -76.5764,
+    "radar": "KMDT",
+    "radar_station": "KMDT",
+    "notes": null,
+    "name": "Maytown Sport Parachute Club",
+    "key": "skydive-maytown",
+    "field_elevation_ft": 449,
+    "metar_note": null,
+    "runways": [
+      10
+    ]
+  },
   "midwest-freefall-spc-inc": {
     "burble_dz_id": 3113,
     "burble_public_url": "https://dzm.burblesoft.com/jumper_manifest_public?dz_id=3113",
