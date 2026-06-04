@@ -706,6 +706,7 @@ th, td{
           <div class="breakRow"><div class="breakLabel">Visibility</div><div class="breakState info" id="breakVisibilityState">—</div><div class="breakDetail" id="breakVisibilityDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Clouds</div><div class="breakState info" id="breakCloudsState">—</div><div class="breakDetail" id="breakCloudsDetail">—</div></div>
           <div class="breakRow"><div class="breakLabel">Density Alt</div><div class="breakState info" id="breakDAState">—</div><div class="breakDetail" id="breakDADetail">—</div></div>
+          <div class="breakRow"><div class="breakLabel">Daylight</div><div class="breakState info" id="breakNightState">—</div><div class="breakDetail" id="breakNightDetail">—</div></div>
         </div>
       </div>
     </div>
@@ -1026,6 +1027,92 @@ th, td{
     return { ok: true, ...derived };
   }
 
+  // ── Solar position (pure JS, no external lib) ────────────────────────────
+  // Returns { sunriseMs, sunsetMs } in local wall-clock ms-since-midnight,
+  // or null if the DZ lat/lon is unavailable.
+  // Algorithm: NOAA solar calculator (accurate to ~1 min).
+  function getSolarTimes(lat, lon, dateObj) {
+    if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const rad = Math.PI / 180;
+    const deg = 180 / Math.PI;
+    const d = dateObj || new Date();
+    // Julian date
+    const JD = Math.floor(d.getTime() / 86400000) + 2440587.5 + 0.5;
+    const n = JD - 2451545.0;
+    const L = (280.46 + 0.9856474 * n) % 360;
+    const g = (357.528 + 0.9856003 * n) % 360;
+    const lambda = L + 1.915 * Math.sin(g * rad) + 0.02 * Math.sin(2 * g * rad);
+    const eps = 23.439 - 0.0000004 * n;
+    const sinDec = Math.sin(eps * rad) * Math.sin(lambda * rad);
+    const dec = Math.asin(sinDec) * deg;
+    // Hour angle for sunrise/sunset (solar elevation = -0.833° accounting for refraction+disk)
+    const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec * rad))
+                / (Math.cos(lat * rad) * Math.cos(dec * rad));
+    if (cosH < -1) return { sunriseMs: 0, sunsetMs: 86400000 }; // polar day
+    if (cosH > 1)  return { sunriseMs: null, sunsetMs: null };   // polar night
+    const H = Math.acos(cosH) * deg;
+    // Solar noon in UTC hours
+    const GMST = 6.697375 + 0.0657098242 * n;
+    const LMST = ((GMST + lon / 15) % 24 + 24) % 24;
+    const EqT = (L - lambda + 180) % 360 - 180; // approx equation of time in degrees
+    const solarNoonUTC = (12 - lon / 15 - EqT / 15 + 24) % 24;
+    const sunriseUTC = solarNoonUTC - H / 15;
+    const sunsetUTC  = solarNoonUTC + H / 15;
+    // Convert UTC hours → local ms-since-midnight using the browser's local offset
+    const tzOffsetHours = -d.getTimezoneOffset() / 60;
+    const toLocalMs = (utcH) => {
+      const local = ((utcH + tzOffsetHours) % 24 + 24) % 24;
+      return Math.round(local * 3600000);
+    };
+    return { sunriseMs: toLocalMs(sunriseUTC), sunsetMs: toLocalMs(sunsetUTC) };
+  }
+
+  function getNightStatus(snapshot) {
+    // Try astronomy block from CSC live feed first.
+    const astro = snapshot && snapshot.csc_live && snapshot.csc_live.astronomy;
+    const now = new Date();
+    const nowMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
+    const CAUTION_WINDOW_MS = 30 * 60 * 1000; // 30 min before sunset = caution
+
+    let sunriseMs = null, sunsetMs = null;
+
+    if (astro && astro.sunriseAt && astro.sunsetAt) {
+      try {
+        sunriseMs = new Date(astro.sunriseAt).getTime() % 86400000;
+        // Adjust for local offset
+        const tzOff = -now.getTimezoneOffset() * 60000;
+        sunriseMs = (new Date(astro.sunriseAt).getTime() + tzOff) % 86400000;
+        sunsetMs  = (new Date(astro.sunsetAt).getTime()  + tzOff) % 86400000;
+      } catch(_) { sunriseMs = null; sunsetMs = null; }
+    }
+
+    if (sunriseMs == null || sunsetMs == null) {
+      const prof = snapshot && snapshot.profile;
+      const lat  = prof && Number.isFinite(Number(prof.lat))  ? Number(prof.lat)  : null;
+      const lon  = prof && Number.isFinite(Number(prof.lon))  ? Number(prof.lon)  : null;
+      const sol  = getSolarTimes(lat, lon, now);
+      if (sol) { sunriseMs = sol.sunriseMs; sunsetMs = sol.sunsetMs; }
+    }
+
+    if (sunriseMs == null || sunsetMs == null) {
+      return { status: 'unknown', label: 'UNKNOWN', detail: 'Solar data unavailable', is_night: false, is_caution: false };
+    }
+
+    const fmt = (ms) => {
+      const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+      const ampm = h < 12 ? 'AM' : 'PM';
+      return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${ampm}`;
+    };
+
+    const is_night   = nowMs < sunriseMs || nowMs >= sunsetMs;
+    const is_caution = !is_night && nowMs >= (sunsetMs - CAUTION_WINDOW_MS);
+    const detail = `Sunrise ${fmt(sunriseMs)} · Sunset ${fmt(sunsetMs)}`;
+
+    if (is_night)   return { status: 'no_go',   label: 'NIGHT',   detail, is_night: true,  is_caution: false };
+    if (is_caution) return { status: 'caution',  label: 'CAUTION', detail, is_night: false, is_caution: true  };
+    return            { status: 'good',   label: 'DAY',     detail, is_night: false, is_caution: false };
+  }
+
   function computeDecision(snapshot, profile) {
     const reasons = [];
     const limits = (snapshot && snapshot.limits) ? snapshot.limits : ((profile && profile.limits) ? profile.limits : {});
@@ -1049,6 +1136,13 @@ th, td{
               : null))
       : null;
     const hazardousWeather = !!(hasMetar && (metar.hazardous_weather === true || metar.thunderstorm === true));
+    const presentWeatherTokens = hasMetar && Array.isArray(metar.present_weather) ? metar.present_weather : [];
+    // Treat any IFR-category present weather (rain, snow, fog, mist, drizzle, etc.)
+    // as hazardous even if hazardous_weather flag is not set, since these directly
+    // affect jump safety regardless of ceiling.
+    const IFR_WX = /^(\+|-|VC)?(MI|PR|BC|DR|BL|SH|TS|FZ)?(DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY)/;
+    const hasIfrWeather = presentWeatherTokens.some(t => IFR_WX.test(t));
+    const effectiveHazardous = hazardousWeather || hasIfrWeather;
     const hazardousWeatherLabel = hasMetar
       ? ((typeof metar.weather_summary === "string" && metar.weather_summary.trim())
           ? metar.weather_summary.trim()
@@ -1157,7 +1251,7 @@ th, td{
     let clouds_caution = false;
 
     if (hasMetar) {
-      if (hazardousWeather) {
+      if (effectiveHazardous) {
         clouds_ok = false;
       } else if (ceilingFtAgl != null) {
         // Only BKN/OVC/VV control hard cloud go/no-go
@@ -1168,12 +1262,12 @@ th, td{
       }
 
       // Optional caution flag for low scattered/few layers
-      if (!hazardousWeather && ceilingFtAgl == null && lowestScatteredBase != null) {
+      if (!effectiveHazardous && ceilingFtAgl == null && lowestScatteredBase != null) {
         clouds_caution = lowestScatteredBase < minCeilingLimit;
       }
     }
 
-    if (hasMetar && hazardousWeather) reasons.push('hazardous weather');
+    if (hasMetar && effectiveHazardous) reasons.push(hasIfrWeather && !hazardousWeather ? 'present weather' : 'hazardous weather');
     else if (hasMetar && !cloudSummary && ceilingFtAgl == null && lowestScatteredBase == null) reasons.push('missing clouds');
     else if (hasMetar && !clouds_ok) reasons.push('clouds');
 
@@ -1249,7 +1343,7 @@ th, td{
         detail: visSm == null ? 'Unavailable' : `${Number.isInteger(visSm) ? Math.round(visSm) : visSm.toFixed(1)} sm / min ${minVisibilitySm}`,
       },
       clouds: {
-        status: hazardousWeather
+        status: effectiveHazardous
           ? 'no_go'
           : (!clouds_ok ? 'no_go' : (clouds_caution ? 'caution' : 'good')),
         detail:
@@ -1257,7 +1351,7 @@ th, td{
           (ceilingFtAgl != null ? ` / ceiling ${Math.round(ceilingFtAgl)} ft` : '') +
           (lowestScatteredBase != null && ceilingFtAgl == null ? ` / lowest SCT-FEW ${Math.round(lowestScatteredBase)} ft` : '') +
           ` / min ${Math.round(minCeilingLimit)} ft` +
-          (hazardousWeatherLabel ? ` / ${hazardousWeatherLabel}` : '')),
+          (effectiveHazardous ? ` / ${presentWeatherTokens.join(' ') || 'hazardous weather'}` : '')),
       },
       density_altitude: {
         status: da_ok ? 'good' : 'no_go',
@@ -1269,7 +1363,12 @@ th, td{
       },
     };
 
-    const failFlags = [surface_ok, gust_ok, temp_ok, visibility_ok, clouds_ok, da_ok, aloft_ok, hasLimits, hasMetar];
+    const nightStatus = getNightStatus(snapshot);
+    const night_ok = !nightStatus.is_night;
+    if (nightStatus.is_night) reasons.push('night — no jumps');
+    components.night = { status: nightStatus.status, detail: nightStatus.detail };
+
+    const failFlags = [surface_ok, gust_ok, temp_ok, visibility_ok, clouds_ok, da_ok, aloft_ok, night_ok, hasLimits, hasMetar];
     const go = failFlags.every(Boolean);
     const label = go ? 'GO' : 'NO GO';
     const status = go ? 'good' : 'no_go';
@@ -1345,6 +1444,7 @@ th, td{
     setBreakRow('breakClouds', res.components.clouds.status, res.components.clouds.detail);
     setBreakRow('breakDA', res.components.density_altitude.status, res.components.density_altitude.detail);
     setBreakRow('breakAloft', res.components.aloft.status, res.components.aloft.detail);
+    if (res.components.night) setBreakRow('breakNight', res.components.night.status, res.components.night.detail);
   }
 
   function setDecisionUI(snapshot){

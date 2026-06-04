@@ -171,7 +171,11 @@ function spawnServer(pythonCmd, serverScriptPath, cwd) {
 
   proc.stdout.on("data", (d) => console.log(`[server] ${d.toString().trimEnd()}`));
   proc.stderr.on("data", (d) => console.error(`[server:err] ${d.toString().trimEnd()}`));
-  proc.on("exit", (code, signal) => console.log(`[server] exited code=${code} signal=${signal}`));
+  proc.on("exit", (code, signal) => {
+    console.log(`[server] exited code=${code} signal=${signal}`);
+    // os._exit(0) in the server (Exit button) → quit Electron cleanly.
+    if (code === 0) app.quit();
+  });
 
   return proc;
 }
