@@ -1017,6 +1017,208 @@ _METAR_CACHE: Dict[str, Dict[str, Any]] = {}
 _ALOFT_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
+# ---------------------------------------------------------------------------
+# CSC Live Weather Client
+# Connects to wss://api.skydivecsc.com/graphql via graphql-ws protocol.
+# Runs in a daemon thread; latest data is stored in _CSC_LIVE dict.
+# Activated only when the active DZ profile has "csc_live": true.
+# ---------------------------------------------------------------------------
+
+import base64
+import hashlib
+import socket
+import ssl
+import struct
+
+_CSC_LIVE_LOCK = threading.Lock()
+_CSC_LIVE: Dict[str, Any] = {
+    "connected": False,
+    "wind": {},
+    "weather": {},
+    "astronomy": {},
+    "last_updated_unix": None,
+}
+
+_CSC_WS_HOST = "api.skydivecsc.com"
+_CSC_WS_PATH = "/graphql"
+_CSC_WS_PORT = 443
+
+_CSC_SUBSCRIPTIONS = [
+    {
+        "type": "start",
+        "id": "wind",
+        "payload": {
+            "query": "\nsubscription {\n  wind: windReported {\n    receivedAt\n    speed\n    gustSpeed\n    direction\n    variableDirection\n  }\n}\n",
+            "variables": None,
+        },
+    },
+    {
+        "type": "start",
+        "id": "weather",
+        "payload": {
+            "query": "\nsubscription {\n  weather: weatherReported {\n    receivedAt\n    metar\n    presentWeather\n    temperature\n    skyCondition {\n      cloudCover\n      altitude\n    }\n  }\n}\n",
+            "variables": None,
+        },
+    },
+    {
+        "type": "start",
+        "id": "astronomy",
+        "payload": {
+            "query": "\nsubscription {\n  astronomy: astronomyUpdated {\n    civilTwilightStartAt\n    sunriseAt\n    sunsetAt\n    civilTwilightStopAt\n  }\n}\n",
+            "variables": None,
+        },
+    },
+]
+
+
+def _ws_handshake_and_frame(sock: ssl.SSLSocket) -> None:
+    """Send HTTP upgrade request and validate 101 response."""
+    key_bytes = base64.b64encode(os.urandom(16))
+    key = key_bytes.decode("ascii")
+    request = (
+        f"GET {_CSC_WS_PATH} HTTP/1.1\r\n"
+        f"Host: {_CSC_WS_HOST}\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        f"Sec-WebSocket-Key: {key}\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "Sec-WebSocket-Protocol: graphql-ws\r\n"
+        "Origin: https://wx.skydivecsc.com\r\n"
+        "\r\n"
+    )
+    sock.sendall(request.encode("utf-8"))
+    # Read until end of HTTP headers
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = sock.recv(4096)
+        if not chunk:
+            raise ConnectionError("Connection closed during WS handshake")
+        buf += chunk
+    if b"101" not in buf.split(b"\r\n")[0]:
+        raise ConnectionError(f"WS upgrade failed: {buf[:200]}")
+
+
+def _ws_send_text(sock: ssl.SSLSocket, text: str) -> None:
+    """Send a masked WebSocket text frame."""
+    payload = text.encode("utf-8")
+    length = len(payload)
+    mask = os.urandom(4)
+    masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    header = bytearray([0x81])  # FIN + opcode=1 (text)
+    if length <= 125:
+        header.append(0x80 | length)
+    elif length <= 65535:
+        header.append(0x80 | 126)
+        header += struct.pack(">H", length)
+    else:
+        header.append(0x80 | 127)
+        header += struct.pack(">Q", length)
+    header += mask
+    sock.sendall(bytes(header) + masked)
+
+
+def _ws_recv_frame(sock: ssl.SSLSocket) -> Optional[str]:
+    """Read one WebSocket frame and return its text payload, or None for non-text/ping."""
+    def _recv_exactly(n: int) -> bytes:
+        buf = b""
+        while len(buf) < n:
+            chunk = sock.recv(n - len(buf))
+            if not chunk:
+                raise ConnectionError("Connection closed mid-frame")
+            buf += chunk
+        return buf
+
+    b0, b1 = _recv_exactly(2)
+    opcode = b0 & 0x0F
+    masked = bool(b1 & 0x80)
+    length = b1 & 0x7F
+    if length == 126:
+        length = struct.unpack(">H", _recv_exactly(2))[0]
+    elif length == 127:
+        length = struct.unpack(">Q", _recv_exactly(8))[0]
+    mask_key = _recv_exactly(4) if masked else b""
+    payload = _recv_exactly(length)
+    if masked:
+        payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+    if opcode == 0x8:  # close
+        raise ConnectionError("Server sent close frame")
+    if opcode == 0x9:  # ping — send pong
+        return None
+    if opcode in (0x1, 0x0):  # text or continuation
+        return payload.decode("utf-8", errors="replace")
+    return None
+
+
+def _csc_live_loop() -> None:
+    """Background thread: maintain WS connection and update _CSC_LIVE."""
+    retry_delay = 5.0
+    while True:
+        sock = None
+        try:
+            raw = socket.create_connection((_CSC_WS_HOST, _CSC_WS_PORT), timeout=15)
+            ctx = ssl.create_default_context()
+            sock = ctx.wrap_socket(raw, server_hostname=_CSC_WS_HOST)
+            sock.settimeout(60.0)
+            _ws_handshake_and_frame(sock)
+            # Send connection_init then all subscriptions
+            _ws_send_text(sock, json.dumps({"type": "connection_init", "payload": {}}))
+            for sub in _CSC_SUBSCRIPTIONS:
+                _ws_send_text(sock, json.dumps(sub))
+            retry_delay = 5.0  # reset on successful connect
+            while True:
+                text = _ws_recv_frame(sock)
+                if text is None:
+                    continue
+                try:
+                    msg = json.loads(text)
+                except Exception:
+                    continue
+                msg_type = msg.get("type")
+                if msg_type == "connection_ack":
+                    with _CSC_LIVE_LOCK:
+                        _CSC_LIVE["connected"] = True
+                elif msg_type == "data":
+                    sub_id = msg.get("id")
+                    data = (msg.get("payload") or {}).get("data") or {}
+                    with _CSC_LIVE_LOCK:
+                        if sub_id == "wind" and "wind" in data:
+                            _CSC_LIVE["wind"] = data["wind"]
+                            _CSC_LIVE["last_updated_unix"] = int(time.time())
+                        elif sub_id == "weather" and "weather" in data:
+                            _CSC_LIVE["weather"] = data["weather"]
+                            _CSC_LIVE["last_updated_unix"] = int(time.time())
+                        elif sub_id == "astronomy" and "astronomy" in data:
+                            _CSC_LIVE["astronomy"] = data["astronomy"]
+        except Exception:
+            pass
+        finally:
+            with _CSC_LIVE_LOCK:
+                _CSC_LIVE["connected"] = False
+            if sock is not None:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+        time.sleep(retry_delay)
+        retry_delay = min(retry_delay * 2, 60.0)
+
+
+def _start_csc_live_client() -> None:
+    t = threading.Thread(target=_csc_live_loop, name="csc-live-ws", daemon=True)
+    t.start()
+
+
+def _get_csc_live_snapshot() -> Dict[str, Any]:
+    with _CSC_LIVE_LOCK:
+        return {
+            "connected": _CSC_LIVE["connected"],
+            "wind": dict(_CSC_LIVE["wind"]),
+            "weather": dict(_CSC_LIVE["weather"]),
+            "astronomy": dict(_CSC_LIVE["astronomy"]),
+            "last_updated_unix": _CSC_LIVE["last_updated_unix"],
+        }
+
+
 def _cache_is_fresh(entry: Optional[Dict[str, Any]], ttl_seconds: int) -> bool:
     if not isinstance(entry, dict):
         return False
@@ -1258,6 +1460,26 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": False, "source": "Open-Meteo", "error": f"incomplete DZ metadata ({', '.join(dz_missing)})", "levels": [], "fetched_unix": int(time.time())
             }
 
+            # If this DZ has a live station feed, overlay its wind/temp onto the metar block.
+            csc_live: Optional[Dict[str, Any]] = None
+            if prof.get("csc_live"):
+                csc_live = _get_csc_live_snapshot()
+                live_wind = csc_live.get("wind") or {}
+                live_weather = csc_live.get("weather") or {}
+                if csc_live.get("connected") or csc_live.get("last_updated_unix"):
+                    # Overlay wind fields if present
+                    if live_wind.get("speed") is not None:
+                        metar["wind_speed_kt"] = live_wind["speed"]
+                        metar["source"] = "csc_live+metar"
+                    if live_wind.get("gustSpeed") is not None:
+                        metar["wind_gust_kt"] = live_wind["gustSpeed"]
+                    if live_wind.get("direction") is not None:
+                        metar["wind_dir_deg"] = live_wind["direction"]
+                    # Overlay temperature if present (already Fahrenheit from CSC)
+                    if live_weather.get("temperature") is not None:
+                        metar["temp_f"] = live_weather["temperature"]
+                        metar["temp_c"] = round((live_weather["temperature"] - 32) * 5 / 9, 1)
+
             self._send_json(200, {
                 "ok": True,
                 "server_time_unix": int(time.time()),
@@ -1290,6 +1512,7 @@ class Handler(BaseHTTPRequestHandler):
                 "windy": {
                     "iframe_src": build_windy_iframe_src(float(lat), float(lon)) if (lat is not None and lon is not None) else ""
                 },
+                "csc_live": csc_live,
             })
             return
 
@@ -1490,6 +1713,7 @@ def main() -> None:
     args = ap.parse_args()
 
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
+    _start_csc_live_client()
     print(f"Serving on http://{args.host}:{args.port}  (config: {CONFIG_DIR})")
     httpd.serve_forever()
 

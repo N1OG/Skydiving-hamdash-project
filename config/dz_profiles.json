@@ -251,6 +251,7 @@
     "key": "chicagoland-skydiving-center",
     "field_elevation_ft": 781,
     "metar_note": null,
+    "csc_live": true,
     "runways": [
       7
     ]
