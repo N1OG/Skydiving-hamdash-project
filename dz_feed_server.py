@@ -88,9 +88,6 @@ DEFAULT_LIMITS = {
     "min_ceiling_ft_agl": 3500,
     "max_density_altitude_ft": 6000,
     "max_aloft_14k_kt": 34,
-    "max_shear_14k_kt": 20,
-    # directional sensitivity can be added later; keep place-holder for UI compatibility
-    "max_dir_change_deg": 120,
     "min_temp_f": 68,
     "max_temp_f": 120,
     "planned_exit_altitude_msl_ft": 13500,
@@ -111,8 +108,6 @@ BUILTIN_JUMP_PROFILES = {
             "max_temp_f": 120,
             "max_gust_spread_kt": 6,
             "max_aloft_14k_kt": 22,
-            "max_shear_14k_kt": 12,
-            "max_dir_change_deg": 90,
             "planned_exit_altitude_msl_ft": 13500,
             "deployment_altitude_agl_ft": 6000,
         },
@@ -129,8 +124,6 @@ BUILTIN_JUMP_PROFILES = {
             "max_temp_f": 95,
             "max_gust_spread_kt": 10,
             "max_aloft_14k_kt": 34,
-            "max_shear_14k_kt": 20,
-            "max_dir_change_deg": 120,
             "planned_exit_altitude_msl_ft": 13500,
             "deployment_altitude_agl_ft": 4000,
         },
@@ -147,8 +140,6 @@ BUILTIN_JUMP_PROFILES = {
             "max_temp_f": 120,
             "max_gust_spread_kt": 12,
             "max_aloft_14k_kt": 80,
-            "max_shear_14k_kt": 25,
-            "max_dir_change_deg": 140,
             "planned_exit_altitude_msl_ft": 13500,
             "deployment_altitude_agl_ft": 3000,
         },
@@ -724,9 +715,9 @@ def _uv_to_dirspd(u: float, v: float) -> Tuple[float, float]:
     return ang, spd
 
 
-def fetch_open_meteo_aloft(lat: float, lon: float) -> Dict[str, Any]:
+def fetch_open_meteo_aloft(lat: float, lon: float, field_elevation_ft: float = 0.0) -> Dict[str, Any]:
     """
-    Winds/temps 0..15000 ft each 1000 ft.
+    Winds/temps 0..15000 ft AGL each 1000 ft.
 
     We use Open-Meteo pressure-level data with geopotential heights so the altitude mapping
     isn't a hand-wavy "pressure_to_m" guess. We interpolate u/v and temp vs altitude.
@@ -892,14 +883,16 @@ def fetch_open_meteo_aloft(lat: float, lon: float) -> Dict[str, Any]:
         return u, v, tf
 
     levels = []
-    for ft in range(0, 15001, 1000):
-        u, v, tf = _interp(float(ft))
+    for ft_agl in range(0, 15001, 1000):
+        ft_msl = ft_agl + field_elevation_ft
+        u, v, tf = _interp(ft_msl)
         d, s = _uv_to_dirspd(u, v)
         temp_f = None
         if tf == tf:
             temp_f = round(tf, 1)
         levels.append({
-            "level_ft": int(ft),
+            "level_ft": int(ft_agl),   # AGL — what matters for jump planning
+            "level_ft_msl": int(round(ft_msl)),  # MSL — for reference
             "dir_deg": int(round(d)) % 360,
             "speed_kt": float(round(s, 1)),
             "temp_f": temp_f,
@@ -1246,7 +1239,7 @@ def _cached_metar(icao: str, force: bool = False) -> Dict[str, Any]:
     return {"ok": False, "station": key, "error": "metar fetch returned invalid payload", "fetched_unix": int(time.time())}
 
 
-def _cached_aloft(lat: Any, lon: Any, force: bool = False) -> Dict[str, Any]:
+def _cached_aloft(lat: Any, lon: Any, field_elevation_ft: float = 0.0, force: bool = False) -> Dict[str, Any]:
     try:
         key = f"{float(lat):.5f},{float(lon):.5f}"
     except Exception:
@@ -1255,7 +1248,7 @@ def _cached_aloft(lat: Any, lon: Any, force: bool = False) -> Dict[str, Any]:
         entry = _ALOFT_CACHE.get(key)
         if not force and _cache_is_fresh(entry, ALOFT_TTL_SECONDS):
             return dict(entry)
-    fresh = fetch_open_meteo_aloft(float(lat), float(lon))
+    fresh = fetch_open_meteo_aloft(float(lat), float(lon), field_elevation_ft=float(field_elevation_ft))
     if isinstance(fresh, dict):
         fresh.setdefault("fetched_unix", int(time.time()))
         with _CACHE_LOCK:
@@ -1455,8 +1448,9 @@ class Handler(BaseHTTPRequestHandler):
             force_metar = force_all or _bool_param("force_metar")
             force_aloft = force_all or _bool_param("force_aloft")
 
+            field_elev_ft = float(prof.get("field_elevation_ft") or 0)
             metar = _cached_metar(str(icao or ""), force=force_metar)
-            aloft = _cached_aloft(lat, lon, force=force_aloft) if (dz_ok and lat is not None and lon is not None) else {
+            aloft = _cached_aloft(lat, lon, field_elevation_ft=field_elev_ft, force=force_aloft) if (dz_ok and lat is not None and lon is not None) else {
                 "ok": False, "source": "Open-Meteo", "error": f"incomplete DZ metadata ({', '.join(dz_missing)})", "levels": [], "fetched_unix": int(time.time())
             }
 
@@ -1615,6 +1609,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True, "message": "shutting down"})
             def _shutdown():
                 time.sleep(0.2)
+                # Kill the kiosk browser (Pi/Chromium) before exiting the server.
+                # On Electron the process tree is handled by main.js watching os._exit(0).
+                import subprocess
+                for browser in ("chromium-browser", "chromium", "chrome"):
+                    try:
+                        subprocess.Popen(["pkill", "-f", browser],
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception:
+                        pass
+                time.sleep(0.3)
                 os._exit(0)
             threading.Thread(target=_shutdown, daemon=True).start()
             return

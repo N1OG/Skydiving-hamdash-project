@@ -760,7 +760,7 @@ th, td{
         <div class="badge" id="aloftHealth">—</div>
         <div style="height:4px;"></div>
         <table>
-          <thead><tr><th>ft</th><th>dir</th><th>kt</th><th>°F</th></tr></thead>
+          <thead><tr><th>ft AGL</th><th>dir</th><th>kt</th><th>°F</th></tr></thead>
           <tbody id="aloftBody"></tbody>
         </table>
       </div>
@@ -799,8 +799,6 @@ th, td{
         <div class="kv"><div class="k">Min temp (°F)</div><div class="v"><input id="lim_temp_min" type="number" step="1" style="width:110px" placeholder="—"></div></div>
         <div class="kv"><div class="k">Max temp (°F)</div><div class="v"><input id="lim_temp" type="number" step="1" style="width:110px" placeholder="—"></div></div>
         <div class="kv"><div class="k">Max aloft ≤14k (kt)</div><div class="v"><input id="lim_aloft" type="number" min="0" step="1" style="width:110px"></div></div>
-        <div class="kv"><div class="k">Max shear ≤14k (kt)</div><div class="v"><input id="lim_shear" type="number" min="0" step="1" style="width:110px"></div></div>
-        <div class="kv"><div class="k">Max dir change (deg)</div><div class="v"><input id="lim_dir" type="number" min="0" step="1" style="width:110px"></div></div>
         <div class="kv"><div class="k">Planned exit alt (MSL ft)</div><div class="v"><input id="lim_exit_alt" type="number" min="0" step="100" style="width:110px" placeholder="13500"></div></div>
         <div class="kv"><div class="k">Deployment alt (AGL ft)</div><div class="v"><input id="lim_deploy_alt" type="number" min="0" step="100" style="width:110px" placeholder="3500"></div></div>
       </div>
@@ -1172,8 +1170,6 @@ th, td{
     const spreadLimit = numLimit('max_gust_spread_kt');
     const absoluteGustLimit = numLimit('max_gust_kt');
     const aloftLimit = numLimit('max_aloft_14k_kt');
-    const shearLimit = numLimit('max_shear_14k_kt');
-    const dirLimit = numLimit('max_dir_change_deg');
     const minTempF = numLimit('min_temp_f');
     const maxTempF = numLimit('max_temp_f');
     const exitAlt = numLimit('planned_exit_altitude_msl_ft') ?? 13500;
@@ -1196,11 +1192,13 @@ th, td{
     if (hasMetar && windKt == null) reasons.push('missing wind');
     else if (hasMetar && !surface_ok) reasons.push('surface wind');
 
-    let gust_ok = hasMetar && (gustKt != null);
-    if (spreadLimit != null) gust_ok = gust_ok && (spreadKt != null) && (spreadKt <= spreadLimit);
-    if (absoluteGustLimit != null) gust_ok = gust_ok && (gustKt != null) && (gustKt <= absoluteGustLimit);
-    if (hasMetar && gustKt == null) reasons.push('missing gust');
-    else if (hasMetar && !gust_ok) reasons.push('gust');
+    // No gust reported = calm conditions = OK. Only fail if a gust IS reported and exceeds limits.
+    let gust_ok = true;
+    if (hasMetar && gustKt != null) {
+      if (spreadLimit != null && spreadKt != null) gust_ok = gust_ok && (spreadKt <= spreadLimit);
+      if (absoluteGustLimit != null) gust_ok = gust_ok && (gustKt <= absoluteGustLimit);
+    }
+    if (hasMetar && gustKt != null && !gust_ok) reasons.push('gust');
 
     let temp_ok = true;
     if (minTempF != null || maxTempF != null) {
@@ -1301,34 +1299,10 @@ th, td{
     const aloftSpeed = nearestAloft && Number.isFinite(Number(nearestAloft.speed_kt)) ? Number(nearestAloft.speed_kt) : null;
     const aloftDir = nearestAloft && Number.isFinite(Number(nearestAloft.dir_deg)) ? Number(nearestAloft.dir_deg) : null;
 
-    let maxShearObserved = null;
-    let maxDirObserved = null;
-    const shearLevels = aloftLevels
-      .filter(l => Number.isFinite(Number(l.level_ft)) && Number(l.level_ft) <= 14000)
-      .sort((a, b) => Number(a.level_ft) - Number(b.level_ft));
-    for (let i = 1; i < shearLevels.length; i++) {
-      const prev = shearLevels[i - 1];
-      const curr = shearLevels[i];
-      const s0 = Number(prev.speed_kt), s1 = Number(curr.speed_kt);
-      if (Number.isFinite(s0) && Number.isFinite(s1)) {
-        const shear = Math.abs(s1 - s0);
-        if (maxShearObserved == null || shear > maxShearObserved) maxShearObserved = shear;
-      }
-      const d0 = Number(prev.dir_deg), d1 = Number(curr.dir_deg);
-      const dd = angleDiff(d0, d1);
-      if (dd != null && (maxDirObserved == null || dd > maxDirObserved)) maxDirObserved = dd;
-    }
-
     let aloft_ok = aloftLevels.length > 0 && aloftSpeed != null;
     if (aloftLimit != null) aloft_ok = aloft_ok && (aloftSpeed != null) && (aloftSpeed <= aloftLimit);
-    if (shearLimit != null) aloft_ok = aloft_ok && (maxShearObserved != null) && (maxShearObserved <= shearLimit);
-    if (dirLimit != null) aloft_ok = aloft_ok && (maxDirObserved != null) && (maxDirObserved <= dirLimit);
     if (!aloftLevels.length || aloftSpeed == null) reasons.push('missing aloft');
-    else {
-      if (aloftLimit != null && !(aloftSpeed <= aloftLimit)) reasons.push('aloft');
-      if (shearLimit != null && !(maxShearObserved != null && maxShearObserved <= shearLimit)) reasons.push('shear');
-      if (dirLimit != null && !(maxDirObserved != null && maxDirObserved <= dirLimit)) reasons.push('direction change');
-    }
+    else if (aloftLimit != null && !(aloftSpeed <= aloftLimit)) reasons.push('aloft');
 
     const components = {
       wind: {
@@ -1411,8 +1385,6 @@ th, td{
       aloftSpeedKt: aloftSpeed,
       aloftDirDeg: aloftDir,
       aloftLevelFt: nearestAloft && Number.isFinite(Number(nearestAloft.level_ft)) ? Number(nearestAloft.level_ft) : exitAlt,
-      maxShearKt: maxShearObserved,
-      maxDirChangeDeg: maxDirObserved,
       minVisibilitySm,
       minCeilingFtAgl: minCeilingLimit,
       maxDensityAlt,
@@ -1662,8 +1634,6 @@ th, td{
     $("lim_ceiling").value = lim.min_ceiling_ft_agl ?? "";
     $("lim_density_alt").value = lim.max_density_altitude_ft ?? "";
     $("lim_aloft").value = lim.max_aloft_14k_kt ?? "";
-    $("lim_shear").value = lim.max_shear_14k_kt ?? "";
-    $("lim_dir").value = lim.max_dir_change_deg ?? "";
     $("lim_exit_alt").value = lim.planned_exit_altitude_msl_ft ?? "";
     $("lim_deploy_alt").value = lim.deployment_altitude_agl_ft ?? "";
   }
@@ -1897,6 +1867,23 @@ th, td{
     }, 5 * 60 * 1000);
   }
 
+  // Fast poll for DZs with live station data (e.g. CSC).
+  // Runs every 10 seconds but only fetches when the active snapshot has csc_live data.
+  // Updates only the METAR panel and decision — does not touch aloft.
+  let _lastSnapshot = null;
+  function startCscLiveTimer() {
+    window.setInterval(async () => {
+      try {
+        const snap = await apiGet("/snapshot.json");
+        if (!snap || !snap.ok || !snap.csc_live) return;
+        _lastSnapshot = snap;
+        setMetarUI(snap);
+        setDecisionUI(snap);
+        setDecisionBreakdownUI(snap, computeDecision(snap));
+      } catch(_) {}
+    }, 10 * 1000);
+  }
+
   function startAloftTimer(){
     const msPerHour = 60 * 60 * 1000;
     const msUntilNextHour = msPerHour - (Date.now() % msPerHour) + 500;
@@ -1985,8 +1972,6 @@ th, td{
       min_ceiling_ft_agl: parseNum("lim_ceiling"),
       max_density_altitude_ft: parseNum("lim_density_alt"),
       max_aloft_14k_kt: parseNum("lim_aloft"),
-      max_shear_14k_kt: parseNum("lim_shear"),
-      max_dir_change_deg: parseNum("lim_dir"),
       planned_exit_altitude_msl_ft: parseNum("lim_exit_alt"),
       deployment_altitude_agl_ft: parseNum("lim_deploy_alt"),
     };
@@ -2018,6 +2003,7 @@ th, td{
   startMetarTimer();
   startAloftTimer();
   startWindyTimer();
+  startCscLiveTimer();
 
   // tryConnect() does the initial server handshake. It retries every 15 s
   // until it succeeds so a slow-starting server is handled automatically.
