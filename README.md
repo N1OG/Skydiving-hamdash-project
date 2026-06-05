@@ -13,10 +13,13 @@ Local, fullscreen skydiving weather decision dashboard designed for drop zones, 
 
 - **Fullscreen operational display** — Electron app (Windows) or Chromium kiosk (Raspberry Pi), no browser chrome
 - **Surface conditions** via live METAR — wind, gust, gust spread, temp, altimeter, visibility, ceiling, pressure altitude, density altitude
-- **Winds aloft table** — speed and direction at 3k, 6k, 9k, 12k, and 15k ft with shear between levels
+- **Winds aloft table** — speed and direction at 1k–15k ft AGL, sourced from Open-Meteo/ECMWF and corrected for field elevation
 - **NWS NEXRAD radar loop** — nearest station auto-selected per DZ, refreshes every 5 minutes
 - **Windy model overlay** — centered on the DZ, refreshes hourly
-- **Jump profile–based GO / NO-GO logic** — per-category breakdown of wind, gust, temp, visibility, clouds, and density altitude
+- **Jump profile–based GO / NO-GO logic** — per-category breakdown of wind, gust, temp, visibility, clouds, density altitude, and daylight
+- **Daylight check** — automatic sunrise/sunset calculation per DZ; NO-GO at night, CAUTION within 30 minutes of sunset
+- **Present weather NO-GO** — rain, snow, fog, mist, and other IFR-category conditions trigger NO-GO regardless of reported ceiling
+- **CSC live station feed** — when Chicagoland Skydiving Center (KRPJ) is selected, wind and weather data updates live every 10 seconds via the DZ's own on-site weather station
 - **96 US drop zones** pre-configured across 36 states and territories
 - **Substitute METAR station notes** — when a DZ airport has no weather reporting, the panel shows which nearby station is being used and how far away it is
 - **Local-first architecture** — no cloud accounts, no subscriptions, no telemetry
@@ -38,18 +41,23 @@ Three built-in profiles, all limits fully editable in the dashboard:
 
 | Limit | Student | A-B License | Experienced (C-D) |
 |---|---|---|---|
-| Max surface wind | 14 kt | 19 kt | 24 kt |
-| Max gust | 14 kt | 19 kt | 24 kt |
-| Max gust spread | 8 kt | 10 kt | 12 kt |
-| Max wind shear ≤14k | 10 kt | 12 kt | 15 kt |
-| Max dir change | 90° | 120° | 150° |
-| Min temperature | 70°F | 68°F | 50°F |
+| Max surface wind | 14 kt | 19 kt | 25 kt |
+| Max gust | 14 kt | 20 kt | 34 kt |
+| Max gust spread | 6 kt | 10 kt | 12 kt |
+| Min visibility | 3 sm | 5 sm | 5 sm |
+| Min ceiling | 6,000 ft AGL | 4,000 ft AGL | 4,000 ft AGL |
+| Max density altitude | 4,000 ft | 6,000 ft | 8,000 ft |
+| Max aloft wind ≤14k | 22 kt | 34 kt | 80 kt |
+| Min temperature | 68°F | 30°F | 68°F |
+| Max temperature | 120°F | 95°F | 120°F |
+| Planned exit altitude | 13,500 ft MSL | 13,500 ft MSL | 13,500 ft MSL |
+| Deployment altitude | 6,000 ft AGL | 4,000 ft AGL | 3,000 ft AGL |
 
 ---
 
 ## Architecture
 
-- **`dz_feed_server.py`** — Python HTTP server on port 8765. Fetches METAR (aviationweather.gov), winds aloft (Open-Meteo/ECMWF), and radar. Serves a stable JSON API. Reads all config from `config/`.
+- **`dz_feed_server.py`** — Python HTTP server on port 8765. Fetches METAR (aviationweather.gov), winds aloft (Open-Meteo/ECMWF), and radar. Serves a stable JSON API. Reads all config from `config/`. For Chicagoland Skydiving Center, maintains a persistent WebSocket connection to the DZ's live weather station at `wss://api.skydivecsc.com/graphql`.
 - **`dashboard.html`** — Single-file HTML/CSS/JS frontend. Polls the local server and renders all panels. No external runtime dependencies.
 - **Electron wrapper** — Starts the Python server automatically and opens the dashboard in a native fullscreen window (Windows).
 - **Pi kiosk** — Starts the server and opens Chromium in fullscreen kiosk mode (Raspberry Pi).
@@ -126,6 +134,9 @@ When run via Electron on Windows, writable runtime data is stored in:
 
 | Version | Changes |
 |---|---|
+| **v1.2.5** | Pi exit button now kills Chromium kiosk on shutdown. Removed wind shear metrics from decision logic and limits UI. Added CSC live 10-second poll — when Chicagoland Skydiving Center is selected, wind/weather updates live from the DZ's on-site station. Sunrise/sunset daylight check added to decision logic (NO-GO at night, CAUTION 30 min before sunset). Present weather (rain, fog, snow, etc.) now triggers NO-GO regardless of ceiling. Fixed missing limit inputs in the limits modal (gust, visibility, ceiling, density alt, aloft were not saving). Winds aloft levels are now correctly computed in AGL using field elevation from the DZ profile. Fixed gust NO-GO when no gust is reported (calm conditions no longer show as NO-GO). |
+| **v1.2.4** | CSC live WebSocket feed integrated — Chicagoland Skydiving Center surface wind and weather served from DZ's own station at KRPJ via `wss://api.skydivecsc.com/graphql`. |
+| **v1.2.3** | Enforced LF line endings via `.gitattributes` to prevent CRLF breaking the Pi installer on future releases. Added missing limit inputs to the limits modal. |
 | **v1.2.2** | Fixed coordinates for 12 DZs where lat/lon pointed to the METAR station instead of the actual DZ (affected Windy centering and winds aloft). Fixed 3 invalid NEXRAD radar codes (Ranch: KALY→KENX, Northstar: KARX→KMPX, Seneca Lake: KBUF→KBGM). Added self-updating Pi installer (`--update` flag). |
 | **v1.2.1** | Station card in METAR panel now shows the bare ICAO code only; full substitute-station note stays in the observation line. |
 | **v1.2.0** | Substitute METAR station distance notes in the METAR panel. Fixed electron-builder `repository` field and GitHub Actions Node.js 24 compatibility. |
